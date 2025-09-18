@@ -5,6 +5,8 @@ from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 import time
 
+from proxy import Proxy
+
 def errorCatcher(func, heandler, *args, **kwargs):
     try:
         return func(*args, **kwargs)
@@ -14,10 +16,53 @@ def errorCatcher(func, heandler, *args, **kwargs):
 def scrapingWithThreads(links):
   
     with ThreadPoolExecutor(max_workers=10) as executor:
-        result = executor.map(isGameIiStock, links)
+        result = executor.map(isGameInStock, links)
 
     in_stock_flags = {url: flag for (url, flag) in result}
     return [in_stock_flags[url] for url in links]  
+
+def getGameData(url: str, proxy: Proxy):
+    page = requests.get(url, proxies=proxy.proxyForRequests(5))
+    if page.status_code != 200:
+        return None
+    soup = BeautifulSoup(page.text, 'html.parser')
+
+    id = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__code'}).text.strip(),
+                      lambda _: None, None)
+    title = soup.find('h1', attrs={'class': 'product-title'}).text.strip().replace('Настільна гра ', '')
+    in_stock = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__availability'}).text.strip(),
+                      lambda _: None, None)
+    price = errorCatcher(lambda _: float(soup.find('meta', attrs={'itemprop': 'price'}).get('content')),
+                         lambda _: None, None)
+    
+    # Extracting data from the features table
+    table = soup.find('table', attrs={'class': 'product-features__table'})
+    rows = table.find_all('tr')
+    players = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Кількість гравців' in row.text][0],
+                           lambda _: None, None)
+    age = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Вік' in row.text][0],
+                       lambda _: None, None)
+    maker = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Видавець' in row.text][0],
+                         lambda _: None, None)
+    bbg_url = errorCatcher(lambda _: [row.find('td').find('a').get('href') for row in rows if 'Рейтинг' in row.text][0],
+                           lambda _: None, None)
+    
+    # Structuring data to dict
+    data = {
+        'id': id,
+        'title': title,
+        'in_stock': in_stock,
+        'price': price,
+        'players': players,
+        'age': age,
+        'maker': maker,
+        'bbg_url': bbg_url
+    }
+    
+    return data
+
+    
+
 
 def scrapeGames(pageSoup, dataDictionary):
     gamePreviews = pageSoup.find_all('li', attrs={'class': 'catalog-grid__item'})
@@ -67,20 +112,24 @@ def scrapeGameland(dataDictionary, linkSraper):
 
 
 if __name__ == '__main__':
-    data = {
-    'id': [],
-    'name': [],
-    'price': [],
-    'in_stock': [],
-    'link': []
-    }
+    # data = {
+    # 'id': [],
+    # 'name': [],
+    # 'price': [],
+    # 'in_stock': [],
+    # 'link': []
+    # }
 
-    print('0')
+    # print('0')
 
-    start = time.time()
-    scrapeGameland(data)
-    end = time.time()
-    print(end - start)
+    # start = time.time()
+    # scrapeGameland(data)
+    # end = time.time()
+    # print(end - start)
 
-    df = pd.DataFrame(data)
-    print(df)
+    # df = pd.DataFrame(data)
+    # print(df)
+
+    proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
+    d = getGameData('https://gameland.com.ua/bytva-restoraniv-rival-restaurants/', proxy)
+    print(d)
