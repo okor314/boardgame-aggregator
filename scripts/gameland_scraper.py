@@ -13,13 +13,12 @@ def errorCatcher(func, heandler, *args, **kwargs):
     except Exception as e:
         heandler(e)
 
-def scrapingWithThreads(links):
-  
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        result = executor.map(isGameInStock, links)
+def scrapingWithThreads(links: list, workers: int, proxy: Proxy):
+    proxies = [proxy for _ in links]
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        result = executor.map(getGameData, links, proxies)
 
-    in_stock_flags = {url: flag for (url, flag) in result}
-    return [in_stock_flags[url] for url in links]  
+    return result
 
 def getGameData(url: str, proxy: Proxy):
     page = requests.get(url, proxies=proxy.proxyForRequests(5))
