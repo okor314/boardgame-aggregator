@@ -20,7 +20,7 @@ def scrapingWithThreads(links: list, workers: int, proxy: Proxy):
 
     return result
 
-def getGameData(url: str, proxy: Proxy):
+def getGameData(url: str, proxy: Proxy, pause: float = 0):
     page = requests.get(url, proxies=proxy.proxyForRequests(5))
     if page.status_code != 200:
         return None
@@ -57,6 +57,9 @@ def getGameData(url: str, proxy: Proxy):
         'maker': maker,
         'bbg_url': bbg_url
     }
+
+    # Pause before making next request
+    time.sleep(pause)
     
     return data
 
