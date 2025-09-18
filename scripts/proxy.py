@@ -16,13 +16,17 @@ class Proxy:
     def get(self, poolSize: int) -> str:
         """Return a random proxy from list of proxies
         with lenght equal poolSize"""
-        
+
         if poolSize < 1:
             raise ValueError('poolSize value must be a positive integer.')
         elif poolSize > len(self.proxies):
             poolSize = len(self.proxies)
 
         return random.choice(self.proxies[:poolSize])
+    
+    def proxyForRequests(self, poolSize: int) -> dict:
+        proxy = self.get(poolSize)
+        return {'http': proxy, 'https': proxy}
         
 
 if __name__ == "__main__":
