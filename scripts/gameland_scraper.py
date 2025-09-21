@@ -27,7 +27,7 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
         return None
     soup = BeautifulSoup(page.text, 'html.parser')
 
-    id = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__code'}).text.strip(),
+    id = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__code'}).text.strip().replace('Артикул: ', ''),
                       lambda _: None, None)
     title = soup.find('h1', attrs={'class': 'product-title'}).text.strip().replace('Настільна гра ', '')
     in_stock = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__availability'}).text.strip(),
@@ -75,28 +75,28 @@ def getLinks(pageSoup: BeautifulSoup):
     return links
 
 
-def scrapeGameland(proxy: Proxy, stopAt: int = None) -> list:
+def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int = None) -> list:
     mainPageURL = 'https://gameland.com.ua/catalog/'
     resultData = []
 
-    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests())
+    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests(5))
     if page.status_code != 200: return
     soup = BeautifulSoup(page.text, 'html.parser')
 
     # Scraping data
     links = getLinks(soup)
-    resultData.extend(scrapingWithThreads(links, workers=5, proxy=proxy, pause=5))
+    resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
 
     nextPageLink = soup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
 
     while nextPageLink is not None:
         # Checking if number of games reach desired value
         if stopAt is not None:
-            if len(resultData) > stopAt:
+            if len(resultData) >= stopAt:
                 break
-        
+        print(len(resultData))
         newPageLink = 'https://gameland.com.ua' + nextPageLink['href']
-        newPage = requests.get(newPageLink, proxies=proxy.proxyForRequests())
+        newPage = requests.get(newPageLink, proxies=proxy.proxyForRequests(5))
         if newPage.status_code != 200:
             print(f'Break on page {newPageLink.split('page=')[1][0]}')
             return resultData
@@ -104,7 +104,7 @@ def scrapeGameland(proxy: Proxy, stopAt: int = None) -> list:
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
         
         links = getLinks(newSoup)
-        resultData.extend(scrapingWithThreads(links, workers=5, proxy=proxy, pause=5))
+        resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
         
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
     
@@ -134,5 +134,6 @@ if __name__ == '__main__':
     # print(df)
 
     proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
-    d = getGameData('https://gameland.com.ua/bytva-restoraniv-rival-restaurants/', proxy)
-    print(d)
+    data = scrapeGameland(proxy, workers=3, pause=5, stopAt=20)
+    print(data)
+    print(len(data))
