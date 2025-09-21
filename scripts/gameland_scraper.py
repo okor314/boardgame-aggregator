@@ -13,10 +13,11 @@ def errorCatcher(func, heandler, *args, **kwargs):
     except Exception as e:
         heandler(e)
 
-def scrapingWithThreads(links: list, workers: int, proxy: Proxy):
+def scrapingWithThreads(links: list, workers: int, proxy: Proxy, pause: float = 0):
     proxies = [proxy for _ in links]
+    pauses = [pause for _ in links]
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        result = executor.map(getGameData, links, proxies)
+        result = executor.map(getGameData, links, proxies, pauses)
 
     return result
 
@@ -74,29 +75,40 @@ def getLinks(pageSoup: BeautifulSoup):
     return links
 
 
-def scrapeGameland(dataDictionary, linkSraper):
+def scrapeGameland(proxy: Proxy, stopAt: int = None) -> list:
     mainPageURL = 'https://gameland.com.ua/catalog/'
+    resultData = []
 
-    page = requests.get(mainPageURL)
+    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests())
     if page.status_code != 200: return
     soup = BeautifulSoup(page.text, 'html.parser')
 
-    scrapeGames(soup, dataDictionary, linkSraper)
+    # Scraping data
+    links = getLinks(soup)
+    resultData.extend(scrapingWithThreads(links, workers=5, proxy=proxy, pause=5))
 
     nextPageLink = soup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
 
     while nextPageLink is not None:
+        # Checking if number of games reach desired value
+        if stopAt is not None:
+            if len(resultData) > stopAt:
+                break
+        
         newPageLink = 'https://gameland.com.ua' + nextPageLink['href']
-        newPage = requests.get(newPageLink)
+        newPage = requests.get(newPageLink, proxies=proxy.proxyForRequests())
         if newPage.status_code != 200:
             print(f'Break on page {newPageLink.split('page=')[1][0]}')
-            return
+            return resultData
             
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
         
-        scrapeGames(newSoup, dataDictionary, linkSraper)
+        links = getLinks(newSoup)
+        resultData.extend(scrapingWithThreads(links, workers=5, proxy=proxy, pause=5))
         
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
+    
+    return resultData
 
 
 
