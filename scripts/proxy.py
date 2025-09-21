@@ -2,6 +2,12 @@ import random
 
 class Proxy:
     def __init__(self, proxy_filepath: str):
+        self.proxies: list
+        
+        self.setProxies(proxy_filepath)
+        self.poolSize = len(self.proxies)
+    
+    def setProxies(self, proxy_filepath: str):
         self.proxies = []
 
         # restructure proxies in correct way
@@ -13,6 +19,9 @@ class Proxy:
             address, port, username, password = row.split(':')
             self.proxies.append(f'http://{username}:{password}@{address}:{port}/')
 
+    def setPoolSize(self, newSize: int):
+        self.poolSize = newSize     
+
     def get(self, poolSize: int) -> str:
         """Return a random proxy from list of proxies
         with lenght equal poolSize"""
@@ -21,6 +30,8 @@ class Proxy:
             raise ValueError('poolSize value must be a positive integer.')
         elif poolSize > len(self.proxies):
             poolSize = len(self.proxies)
+        elif poolSize is None:
+            poolSize = self.poolSize
 
         return random.choice(self.proxies[:poolSize])
     
