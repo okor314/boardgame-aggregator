@@ -66,23 +66,12 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
     
 
 
-def scrapeGames(pageSoup, dataDictionary):
+def getLinks(pageSoup: BeautifulSoup):
     gamePreviews = pageSoup.find_all('li', attrs={'class': 'catalog-grid__item'})
-    ids = [errorCatcher(lambda x: x.text.strip().split(' ')[-1], lambda x: None, game.find('div', attrs={'class': 'catalogCard-code'})) for game in gamePreviews]
-    names = [errorCatcher(lambda x: x.find('a')['title'], lambda x: None, game.find('div', attrs={'class': 'catalogCard-title'})) for game in gamePreviews]
-    prices = [errorCatcher(lambda x: float(x.text.strip().replace(' ', '')[:-3]), lambda x: None, game.find('div', attrs={'class': 'catalogCard-price'})) for game in gamePreviews]
-    #in_stock_flags = []
     links = [errorCatcher(lambda x: 'https://gameland.com.ua' + x.find('a')['href'], lambda x: None,
                           game.find('div', attrs={'class': 'catalogCard-title'})) for game in gamePreviews]
 
-    # Checking if products available in stock
-    in_stock_flags = scrapingWithThreads(links)
-        
-    dataDictionary['id'].extend(ids)
-    dataDictionary['name'].extend(names)
-    dataDictionary['price'].extend(prices)
-    dataDictionary['in_stock'].extend(in_stock_flags)
-    dataDictionary['link'].extend(links)
+    return links
 
 
 def scrapeGameland(dataDictionary, linkSraper):
