@@ -25,7 +25,7 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
         return None
     soup = BeautifulSoup(page.text, 'html.parser')
 
-    id = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__code product-header__code--filled'}).text.strip().replace('Артикул: ', ''),
+    id = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__code product-header__code--filled'}).text.split('\n')[2].strip(),
                       lambda _: None, None)
     title = soup.find('h1', attrs={'class': 'product-title'}).text.strip().replace('Настільна гра ', '')
     in_stock = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__availability'}).text.strip(),
@@ -66,38 +66,51 @@ def getLinks(pageSoup: BeautifulSoup) -> list:
     
     return links
 
-def scrapeWoodcat(dataDictionary):
+def scrapeWoodcat(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int = None) -> list:
     # Get first page with board games
     mainPageURL = 'https://woodcat.com.ua/katalog/1054/?gad_source=1&gad_campaignid=21798011267&gbraid=0AAAAA9yheJDxTz6Svxd2Qtd3-13ivOh_i&gclid=Cj0KCQjw0LDBBhCnARIsAMpYlAoD_u36hVrC7aMKQc_topo48uZyPB4kkUW45Y6bPN6ITzrHqmjHlZEaAt_nEALw_wcB'
+    resultData = []
 
-    page = requests.get(mainPageURL)
+    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests(5))
     if page.status_code != 200: return
     soup = BeautifulSoup(page.text, 'html.parser')
 
-    scrapeGames(soup, dataDictionary)
+    links = getLinks(soup)
+    resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
 
     nextPageLink = soup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
 
     while nextPageLink is not None:
+        if stopAt is not None:
+            if len(resultData) >= stopAt:
+                break
+
         newPageLink = 'https://woodcat.com.ua' + nextPageLink['href']
-        newPage = requests.get(newPageLink)
+        newPage = requests.get(newPageLink, proxies=proxy.proxyForRequests(5))
         if newPage.status_code != 200:
             print(f'Break on page {newPageLink.split('page=')[1][0]}')
             return
             
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
-        scrapeGames(newSoup, dataDictionary)
+        links = getLinks(soup)
+        resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
+
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
+    
+    return resultData
 
 if __name__ == '__main__':
-  data = {
-    'id': [],
-    'name': [],
-    'price': [],
-    'genre': [],
-    'in_stock': [],
-    'link': []
-  }
+#   data = {
+#     'id': [],
+#     'name': [],
+#     'price': [],
+#     'genre': [],
+#     'in_stock': [],
+#     'link': []
+#   }
   
-  scrapeWoodcat(data)
-        
+#   scrapeWoodcat(data)
+    proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
+    data = scrapeWoodcat(proxy=proxy, workers=3, pause=5, stopAt=20)
+    print(data)
+    print(len(data))
