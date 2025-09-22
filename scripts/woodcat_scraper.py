@@ -43,8 +43,7 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
         'price': price,
         'players': players,
         'age': age,
-        'maker': maker,
-        'bbg_url': bbg_url
+        'maker': maker
     }
 
     # Pause before making next request
