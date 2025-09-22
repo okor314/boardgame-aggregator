@@ -63,19 +63,13 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
     
     return data
 
-def scrapeGames(pageSoup, dataDictionary):
+def getLinks(pageSoup: BeautifulSoup) -> list:
     gamePreviews = pageSoup.find_all('li', attrs={'class': 'catalog-grid__item'})
-    ids = [errorCatcher(lambda x: x.text.strip().split(' ')[-1], lambda x: None, game.find('div', attrs={'class': 'catalogCard-code'})) for game in gamePreviews]
-    names = [errorCatcher(lambda x: x.find('a')['title'], lambda x: None, game.find('div', attrs={'class': 'catalogCard-title'})) for game in gamePreviews]
-    prices = [errorCatcher(lambda x: float(x.text.strip().replace(' ', '')[:-3]), lambda x: None, game.find('div', attrs={'class': 'catalogCard-price'})) for game in gamePreviews]
-    in_stock_flags = [errorCatcher(lambda x: 'в наявності' == x.text.strip().lower(), lambda x: None, game.find('div', attrs={'class': 'catalogCard-availability'})) for game in gamePreviews]
-    links = [errorCatcher(lambda x: 'https://geekach.com.ua' + x.find('a')['href'], lambda x: None, game.find('div', attrs={'class': 'catalogCard-title'})) for game in gamePreviews]
+    links = [errorCatcher(lambda x: 'https://geekach.com.ua' + x.find('a')['href'],
+                          lambda x: None, game.find('div', attrs={'class': 'catalogCard-title'})) for game in gamePreviews]
+    
+    return links
 
-    dataDictionary['id'].extend(ids)
-    dataDictionary['name'].extend(names)
-    dataDictionary['price'].extend(prices)
-    dataDictionary['in_stock'].extend(in_stock_flags)
-    dataDictionary['link'].extend(links)
 
 def scrapeGeekach(dataDictionary):
     # Get first page with board games
