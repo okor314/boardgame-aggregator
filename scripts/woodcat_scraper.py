@@ -11,6 +11,14 @@ def errorCatcher(func, heandler, *args, **kwargs):
     except Exception as e:
         return heandler(e)
     
+def scrapingWithThreads(links: list, workers: int, proxy: Proxy, pause: float = 0):
+    proxies = [proxy for _ in links]
+    pauses = [pause for _ in links]
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        result = executor.map(getGameData, links, proxies, pauses)
+
+    return result
+    
 def getGameData(url: str, proxy: Proxy, pause: float = 0):
     page = requests.get(url, proxies=proxy.proxyForRequests(5))
     if page.status_code != 200:
