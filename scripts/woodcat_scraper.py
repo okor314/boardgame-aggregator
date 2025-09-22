@@ -52,32 +52,11 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
     return data
 
 
-def scrapeGames(pageSoup, dataDictionary):
-    links = ['https://woodcat.com.ua' + game.find('a').get('href') for game in pageSoup.find_all('div', attrs={'class':'catalogCard-view'})]
+def getLinks(pageSoup: BeautifulSoup) -> list:
+    links = ['https://woodcat.com.ua' + game.find('a').get('href')
+              for game in pageSoup.find_all('div', attrs={'class':'catalogCard-view'})]
     
-    for link in links:
-        gamePage = requests.get(link)
-        if gamePage.status_code != 200:
-            print(f'Request error: {gamePage.status_code}', link)
-        else:
-            newSoup = BeautifulSoup(gamePage.text, 'html.parser')
-            
-            ID = newSoup.find('div', attrs={'class': 'product-header__code product-header__code--filled'}).text.split('\n')[2].strip()
-            name = ' '.join(newSoup.find('h1', attrs={'class': 'product-title'}).text.split(' ')[2:])
-            price = float(newSoup.find('meta', attrs={'itemprop': 'price'}).get('content'))
-            try:
-                genre = [row.find('td').text.strip() for row in newSoup.find_all('tr', attrs={'class': 'product-features__row'})
-                        if 'Жанр' in row.find('th').text][0]
-            except:
-                genre = None
-            in_stock = 'в наявності' == newSoup.find('div', attrs={'class': 'product-header__availability'}).text.strip().lower()
-
-            dataDictionary['id'].append(ID)
-            dataDictionary['name'].append(name)
-            dataDictionary['price'].append(price)
-            dataDictionary['genre'].append(genre)
-            dataDictionary['in_stock'].append(in_stock)
-            dataDictionary['link'].append(link)
+    return links
 
 def scrapeWoodcat(dataDictionary):
     # Get first page with board games
