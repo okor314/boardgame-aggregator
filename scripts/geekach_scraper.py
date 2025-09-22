@@ -71,37 +71,55 @@ def getLinks(pageSoup: BeautifulSoup) -> list:
     return links
 
 
-def scrapeGeekach(dataDictionary):
+def scrapeGeekach(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int = None) -> list:
     # Get first page with board games
     mainPageURL = 'https://geekach.com.ua/nastilni-ihry/'
+    resultData = []
     
-    page = requests.get(mainPageURL)
+    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests(5))
     if page.status_code != 200: return
     soup = BeautifulSoup(page.text, 'html.parser')
 
-    scrapeGames(soup, dataDictionary)
+    # Scraping data
+    links = getLinks(soup)
+    resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
+
     nextPageLink = soup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
 
     # Go throught all pages
     while nextPageLink is not None:
+        # Checking if number of games reach desired value
+        if stopAt is not None:
+            if len(resultData) >= stopAt:
+                break
+        print(len(resultData))
+
         newPageLink = 'https://geekach.com.ua' + nextPageLink['href']
-        newPage = requests.get(newPageLink)
+        newPage = requests.get(newPageLink, proxy=proxy.proxyForRequests(5))
         if newPage.status_code != 200:
             print(f'Break on page {newPageLink.split('page=')[1][0]}')
-            return
+            return resultData
         print(newPageLink.split('page=')[1][0])
+
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
-        scrapeGames(newSoup, dataDictionary)
+        links = getLinks(newSoup)
+        resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
         
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
-        
+    
+    return resultData
 
 if __name__ == '__main__':
-  data = {
-    'id': [],
-    'name': [],
-    'price': [],
-    'in_stock': [],
-    'link': []
-  }
-  scrapeGeekach(data)
+#   data = {
+#     'id': [],
+#     'name': [],
+#     'price': [],
+#     'in_stock': [],
+#     'link': []
+#   }
+#   scrapeGeekach(data)
+
+    proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
+    data = scrapeGeekach(proxy=proxy, workers=3, pause=5, stopAt=20)
+    print(data)
+    print(len(data))
