@@ -22,20 +22,20 @@ class Proxy:
     def setPoolSize(self, newSize: int):
         self.poolSize = newSize     
 
-    def get(self, poolSize: int) -> str:
+    def get(self, poolSize: int = None) -> str:
         """Return a random proxy from list of proxies
         with lenght equal poolSize"""
 
-        if poolSize < 1:
+        if poolSize is None:
+            poolSize = self.poolSize
+        elif poolSize < 1:
             raise ValueError('poolSize value must be a positive integer.')
         elif poolSize > len(self.proxies):
             poolSize = len(self.proxies)
-        elif poolSize is None:
-            poolSize = self.poolSize
 
         return random.choice(self.proxies[:poolSize])
     
-    def proxyForRequests(self, poolSize: int) -> dict:
+    def proxyForRequests(self, poolSize: int = None) -> dict:
         proxy = self.get(poolSize)
         return {'http': proxy, 'https': proxy}
         
