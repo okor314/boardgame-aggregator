@@ -1,9 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from multiprocessing import Pool, cpu_count
 from concurrent.futures import ThreadPoolExecutor
 import time
+import json
 
 from proxy import Proxy
 
@@ -76,7 +76,8 @@ def getLinks(pageSoup: BeautifulSoup):
     return links
 
 
-def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int = None) -> list:
+def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0,
+                   stopAt: int = None, pathToSave = './data/gameland_data.csv') -> list:
     mainPageURL = 'https://gameland.com.ua/catalog/'
     resultData = []
 
@@ -87,6 +88,7 @@ def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int
     # Scraping data
     links = getLinks(soup)
     resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
+    saveTo(pathToSave, resultData, mode='newfile')
 
     nextPageLink = soup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
 
@@ -106,11 +108,28 @@ def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int
         
         links = getLinks(newSoup)
         resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
+        saveTo(pathToSave, resultData)
+        
         print(f'Page {newPageLink.split('page=')[1].split('/')[0]}, items {len(resultData)}')
         
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
     
     return resultData
+
+def saveTo(path, data: list, mode = None):
+    if mode == 'newfile':
+        # Clear file and write column names
+        with open(path, 'w', encoding='utf-8') as f:
+            col_names = data[0].keys()
+            f.write(','.join(col_names))
+        # Regular saving data
+        saveTo(path, data)
+    else:
+        with open(path, 'a', encoding='utf-8') as f:
+            for item in data:
+                values = [str(value) for value in item.values()]
+                f.write('\n'+','.join(values))
+            
 
 
 
@@ -137,10 +156,10 @@ if __name__ == '__main__':
 
     proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
     start = time.time()
-    data = scrapeGameland(proxy, workers=7, pause=3)
+    data = scrapeGameland(proxy, workers=7, pause=3, stopAt=20)
     end = time.time()
     print(end-start)
 
-    print(len(data))
-    df = pd.DataFrame(data)
-    df.to_csv(r'C:\Users\User\Jupyter Folder\boardgame-aggregator\data\gameland_data.csv')
+    # print(len(data))
+    # df = pd.DataFrame(data)
+    # df.to_csv(r'C:\Users\User\Jupyter Folder\boardgame-aggregator\data\gameland_data.csv')
