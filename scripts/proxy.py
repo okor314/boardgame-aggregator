@@ -14,7 +14,7 @@ class Proxy:
         with open(proxy_filepath, 'r') as f:
             text = f.read()
 
-        rows = text.split('\n')[:-1]
+        rows = text.split('\n')
         for row in rows:
             address, port, username, password = row.split(':')
             self.proxies.append(f'http://{username}:{password}@{address}:{port}/')
