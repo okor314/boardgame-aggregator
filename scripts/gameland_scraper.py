@@ -17,9 +17,13 @@ def scrapingWithThreads(links: list, workers: int, proxy: Proxy, pause: float = 
     return result
 
 def getGameData(url: str, proxy: Proxy, pause: float = 0):
-    page = requests.get(url, proxies=proxy.proxyForRequests())
+    try:
+        page = requests.get(url, proxies=proxy.proxyForRequests())
+    except:
+        print(f'Failed: {url}')
+        return url
     if page.status_code != 200:
-        return None
+        return url
     soup = BeautifulSoup(page.text, 'html.parser')
 
     id = errorCatcher(lambda _: soup.find('div', attrs={'class': 'product-header__code'}).text.strip().replace('Артикул: ', ''),
@@ -75,6 +79,7 @@ def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0,
                    stopAt: int = None, pathToSave = './data/gameland_data.csv') -> list:
     mainPageURL = 'https://gameland.com.ua/catalog/'
     resultData = []
+    failedURLs = []
 
     page = requests.get(mainPageURL, proxies=proxy.proxyForRequests())
     if page.status_code != 200: return
@@ -82,8 +87,13 @@ def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0,
 
     # Scraping data
     links = getLinks(soup)
-    resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
-    saveTo(pathToSave, resultData, mode='newfile')
+    gamesData = scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause)
+    # Removing failed urls
+    gamesData = [item for item in gamesData if type(item) is dict]
+    failedURLs.extend([item for item in gamesData if type(item) is str])
+    # Saving
+    saveTo(pathToSave, gamesData, mode='newfile')
+    resultData.extend(gamesData)
 
     nextPageLink = soup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
 
@@ -102,12 +112,25 @@ def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0,
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
         
         links = getLinks(newSoup)
-        resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
-        saveTo(pathToSave, resultData)
+        gamesData = scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause)
+        # Removing failed urls
+        gamesData = [item for item in gamesData if type(item) is dict]
+        failedURLs.extend([item for item in gamesData if type(item) is str])
+        # Saving
+        saveTo(pathToSave, gamesData)
+        resultData.extend(gamesData)
 
         print(f'Page {newPageLink.split('page=')[1].split('/')[0]}, items {len(resultData)}')
         
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
+
+    # Trying scrape failed urls one more time
+    gamesData = scrapingWithThreads(failedURLs, workers=workers, proxy=proxy, pause=pause)
+    # Removing failed urls
+    gamesData = [item for item in gamesData if type(item) is dict]
+    # Saving
+    saveTo(pathToSave, gamesData)
+    resultData.extend(gamesData)
     
     return resultData
 
