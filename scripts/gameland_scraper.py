@@ -22,7 +22,7 @@ def scrapingWithThreads(links: list, workers: int, proxy: Proxy, pause: float = 
     return result
 
 def getGameData(url: str, proxy: Proxy, pause: float = 0):
-    page = requests.get(url, proxies=proxy.proxyForRequests(5))
+    page = requests.get(url, proxies=proxy.proxyForRequests())
     if page.status_code != 200:
         return None
     soup = BeautifulSoup(page.text, 'html.parser')
@@ -37,7 +37,8 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
     
     # Extracting data from the features table
     table = soup.find('table', attrs={'class': 'product-features__table'})
-    rows = table.find_all('tr')
+    rows = errorCatcher(lambda _: table.find_all('tr'), 
+                        lambda _: None, None)
     players = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Кількість гравців' in row.text][0],
                            lambda _: None, None)
     age = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Вік' in row.text][0],
@@ -79,7 +80,7 @@ def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int
     mainPageURL = 'https://gameland.com.ua/catalog/'
     resultData = []
 
-    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests(5))
+    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests())
     if page.status_code != 200: return
     soup = BeautifulSoup(page.text, 'html.parser')
 
@@ -94,17 +95,18 @@ def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int
         if stopAt is not None:
             if len(resultData) >= stopAt:
                 break
-        print(len(resultData))
+        
         newPageLink = 'https://gameland.com.ua' + nextPageLink['href']
-        newPage = requests.get(newPageLink, proxies=proxy.proxyForRequests(5))
+        newPage = requests.get(newPageLink, proxies=proxy.proxyForRequests())
         if newPage.status_code != 200:
-            print(f'Break on page {newPageLink.split('page=')[1][0]}')
+            print(f'Break on page {newPageLink.split('page=')[1].split('/')[0]}')
             return resultData
             
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
         
         links = getLinks(newSoup)
         resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
+        print(f'Page {newPageLink.split('page=')[1].split('/')[0]}, items {len(resultData)}')
         
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
     
@@ -134,6 +136,11 @@ if __name__ == '__main__':
     # print(df)
 
     proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
-    data = scrapeGameland(proxy, workers=3, pause=5, stopAt=20)
-    print(data)
+    start = time.time()
+    data = scrapeGameland(proxy, workers=7, pause=3)
+    end = time.time()
+    print(end-start)
+
     print(len(data))
+    df = pd.DataFrame(data)
+    df.to_csv(r'C:\Users\User\Jupyter Folder\boardgame-aggregator\data\gameland_data.csv')
