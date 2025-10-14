@@ -40,7 +40,7 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
                         lambda _: None, None)
     players = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Кількість гравців' in row.text][0],
                            lambda _: None, None)
-    age = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Вік' in row.text][0],
+    age = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Вік' in row.find('th').text][0],
                        lambda _: None, None)
     maker = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Видавець' in row.text][0],
                          lambda _: None, None)
@@ -56,6 +56,7 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
         'players': players,
         'age': age,
         'maker': maker,
+        'url': url,
         'bbg_url': bbg_url
     }
 
@@ -75,7 +76,7 @@ def getLinks(pageSoup: BeautifulSoup):
     return links
 
 
-def scrapeGameland(proxy: Proxy, workers: int = 1, pause: float = 0,
+def scrapeGameland(proxy: Proxy = Proxy(), workers: int = 1, pause: float = 0,
                    stopAt: int = None, pathToSave = './data/gameland_data.csv') -> list:
     mainPageURL = 'https://gameland.com.ua/catalog/'
     resultData = []
@@ -162,7 +163,7 @@ if __name__ == '__main__':
 
     proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
     start = time.time()
-    data = scrapeGameland(proxy, workers=7, pause=3, stopAt=20)
+    data = scrapeGameland(proxy=proxy, workers=7, pause=3)
     end = time.time()
     print(end-start)
 
