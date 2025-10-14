@@ -4,12 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 
 from proxy import Proxy
-
-def errorCatcher(func, heandler, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        return heandler(e)
+from utils import errorCatcher, saveTo
     
 def scrapingWithThreads(links: list, workers: int, proxy: Proxy, pause: float = 0):
     proxies = [proxy for _ in links]
@@ -20,9 +15,13 @@ def scrapingWithThreads(links: list, workers: int, proxy: Proxy, pause: float = 
     return result
 
 def getGameData(url: str, proxy: Proxy, pause: float = 0):
-    page = requests.get(url, proxies=proxy.proxyForRequests(5))
+    try:
+        page = requests.get(url, proxies=proxy.proxyForRequests())
+    except:
+        print(f'Failed: {url}')
+        return url
     if page.status_code != 200:
-        return None
+        return url
     soup = BeautifulSoup(page.text, 'html.parser')
 
     title = soup.find('h1', attrs={'class': 'product-title'}).text.strip().replace('Настільна гра ', '')
@@ -33,10 +32,11 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
     
     # Extracting data from the features table
     table = soup.find('table', attrs={'class': 'product-features__table'})
-    rows = table.find_all('tr')
+    rows = errorCatcher(lambda _: table.find_all('tr'),
+                           lambda _: None, None)
     players = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Гравців' in row.text][0],
                            lambda _: None, None)
-    age = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Вік' in row.text][0],
+    age = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Вік' in row.find('th').text][0],
                        lambda _: None, None)
     maker = errorCatcher(lambda _: [row.find('td').text.strip() for row in rows if 'Видавець' in row.text][0],
                          lambda _: None, None)
@@ -55,6 +55,7 @@ def getGameData(url: str, proxy: Proxy, pause: float = 0):
         'players': players,
         'age': age,
         'maker': maker,
+        'url': url,
         'bbg_url': bbg_url
     }
 
@@ -71,18 +72,26 @@ def getLinks(pageSoup: BeautifulSoup) -> list:
     return links
 
 
-def scrapeGeekach(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int = None) -> list:
+def scrapeGeekach(proxy: Proxy = Proxy(), workers: int = 1, pause: float = 0,
+                  stopAt: int = None, pathToSave = './data/geekach_data.csv') -> list:
     # Get first page with board games
     mainPageURL = 'https://geekach.com.ua/nastilni-ihry/'
     resultData = []
+    failedURLs = []
     
-    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests(5))
+    page = requests.get(mainPageURL, proxies=proxy.proxyForRequests())
     if page.status_code != 200: return
     soup = BeautifulSoup(page.text, 'html.parser')
 
     # Scraping data
     links = getLinks(soup)
-    resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
+    gamesData = scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause)
+    # Removing failed urls
+    gamesData = [item for item in gamesData if type(item) is dict]
+    failedURLs.extend([item for item in gamesData if type(item) is str])
+    # Saving
+    saveTo(pathToSave, gamesData, mode='newfile')
+    resultData.extend(gamesData)
 
     nextPageLink = soup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
 
@@ -95,18 +104,33 @@ def scrapeGeekach(proxy: Proxy, workers: int = 1, pause: float = 0, stopAt: int 
         print(len(resultData))
 
         newPageLink = 'https://geekach.com.ua' + nextPageLink['href']
-        newPage = requests.get(newPageLink, proxy=proxy.proxyForRequests(5))
+        newPage = requests.get(newPageLink, proxies=proxy.proxyForRequests())
         if newPage.status_code != 200:
-            print(f'Break on page {newPageLink.split('page=')[1][0]}')
+            print(f'Break on page {newPageLink.split('page=')[1].split('/')[0]}')
             return resultData
-        print(newPageLink.split('page=')[1][0])
 
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
         links = getLinks(newSoup)
-        resultData.extend(scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause))
+        gamesData = scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause)
+        # Removing failed urls
+        gamesData = [item for item in gamesData if type(item) is dict]
+        failedURLs.extend([item for item in gamesData if type(item) is str])
+        # Saving
+        saveTo(pathToSave, gamesData)
+        resultData.extend(gamesData)
+
+        print(f'Page {newPageLink.split('page=')[1].split('/')[0]}, items {len(resultData)}')
         
         nextPageLink = newSoup.find('a', attrs={'class': 'pager__item pager__item--forth j-catalog-pagination-btn'})
     
+    # Trying scrape failed urls one more time
+    gamesData = scrapingWithThreads(failedURLs, workers=workers, proxy=proxy, pause=pause)
+    # Removing failed urls
+    gamesData = [item for item in gamesData if type(item) is dict]
+    # Saving
+    saveTo(pathToSave, gamesData)
+    resultData.extend(gamesData)
+
     return resultData
 
 if __name__ == '__main__':
@@ -120,6 +144,7 @@ if __name__ == '__main__':
 #   scrapeGeekach(data)
 
     proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
-    data = scrapeGeekach(proxy=proxy, workers=3, pause=5, stopAt=20)
-    print(data)
+    data = scrapeGeekach(proxy=proxy, workers=7, pause=3)
     print(len(data))
+    # df = pd.DataFrame(data)
+    # df.to_csv(r'C:\Users\User\Jupyter Folder\boardgame-aggregator\data\geekach_data.csv')
