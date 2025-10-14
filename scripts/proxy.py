@@ -1,14 +1,15 @@
 import random
 
 class Proxy:
-    def __init__(self, proxy_filepath: str):
-        self.proxies: list
+    def __init__(self, proxy_filepath: str = ''):
+        self.proxies = []
         
         self.setProxies(proxy_filepath)
         self.poolSize = len(self.proxies)
     
     def setProxies(self, proxy_filepath: str):
         self.proxies = []
+        if proxy_filepath == '': return
 
         # restructure proxies in correct way
         with open(proxy_filepath, 'r') as f:
@@ -25,6 +26,7 @@ class Proxy:
     def get(self, poolSize: int = None) -> str:
         """Return a random proxy from list of proxies
         with lenght equal poolSize"""
+        if self.proxies == []: return None
 
         if poolSize is None:
             poolSize = self.poolSize
