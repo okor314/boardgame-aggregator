@@ -7,15 +7,12 @@ def errorCatcher(func, heandler, *args, **kwargs):
 def formatValues(values: list):
     """Checks if values acceptable for CSV file
     and corrects if not"""
-    for i in range(len(values)):
-        val = values[i]
-        if ',' in val:
-            if '"' in val:
-                values[i] = '""' + val + '""'
-            else:
-                values[i] = '"' + val + '"'
+    # Replacing double-quote with two double-quote characters
+    values = [val.replace('"', '""') for val in values]
+    # Quoting fields containing special characters
+    values = ['"'+val+'"' if ',' in val or '"' in val else val for val in values]
     return values
-    
+
 def saveTo(path, data: list, mode = None):
     if mode == 'newfile':
         # Clear file and write column names
