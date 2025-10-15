@@ -103,7 +103,7 @@ def scrapeWoodcat(proxy: Proxy = Proxy(), workers: int = 1, pause: float = 0,
             
         newSoup = BeautifulSoup(newPage.text, 'html.parser')
 
-        links = getLinks(soup)
+        links = getLinks(newSoup)
         gamesData = scrapingWithThreads(links, workers=workers, proxy=proxy, pause=pause)
         # Removing failed urls
         gamesData = [item for item in gamesData if type(item) is dict]
