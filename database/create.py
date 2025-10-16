@@ -1,20 +1,88 @@
+import psycopg2
 from sqlalchemy import create_engine
 from config import config
 import pandas as pd
 
 from collections.abc import Iterable
 
-# params = config(filename='./database/database.ini')
-# engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
-# conn = engine.connect()
-# conn.close()
+DATABASE_CONFIG = config(filename='./database/database.ini')
 
 def removeChar(string: str, char):
-    if isinstance(char, str):
+    if not isinstance(string, str):
+        return string
+    elif isinstance(char, str):
         return string.replace(char, '')
     elif isinstance(char, Iterable):
         for c in char:
             string = string.replace(c, '')
         return string
     
-print(removeChar('fdfhf88g47g', ['0']))
+def replaceChar(string: str, translator: dict):
+    if not isinstance(string, str):
+        return string
+    else:
+        for old, new in translator.items():
+            string = string.replace(old, new)
+        return string
+    
+def getMin(string):
+    if not isinstance(string, str):
+        return string
+    else:
+        string = removeChar(string, ['+', ' '])
+        string = replaceChar(string, {',':'-', ';':'-', '–':'-'})
+        return int(string.split('-')[0])
+        
+
+def getMax(string):
+    if not isinstance(string, str):
+        return string
+    else:
+        string = removeChar(string, ['+', ' '])
+        string = replaceChar(string, {',':'-', ';':'-', '–':'-'})
+        try:
+            return int(string.split('-')[1])
+        except:
+            return pd.NA
+        
+def prepareDataFrame(df: pd.DataFrame):
+    df = df.drop_duplicates('url', keep='last')
+    df['min_players'] = df.players.apply(getMin).astype('Int8')
+    df['max_players'] = df.players.apply(getMax).astype('Int8')
+    df['age'] = df.age.apply(getMin).astype('Int8')
+
+    df = df.drop('players', axis='columns')
+
+    # Reordering columns
+    columns = list(df.columns)
+    columns = columns[:4] + ['min_players', 'max_players'] + columns[4:-2]
+    df = df[columns]
+    return df
+    
+def createTable(name, connection, pathToCSV, if_exists='fail'):
+    df = pd.read_csv(pathToCSV)
+    df = prepareDataFrame(df)
+
+    df.to_sql(name, connection, index=False, if_exists=if_exists)
+
+    # Renaming id from site and adding database selfincremental id
+    conn = psycopg2.connect(**DATABASE_CONFIG)
+    cur = conn.cursor()
+
+    cur.execute(f"""ALTER TABLE {name}
+                RENAME COLUMN id TO {name}_id""")
+    cur.execute(f"""ALTER TABLE {name}
+                ADD COLUMN id SERIAL PRIMARY KEY""")
+    conn.commit()
+    cur.close()
+    conn.close()
+
+if __name__ == "__main__":
+    params = DATABASE_CONFIG
+    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
+    conn = engine.connect()
+    
+    createTable('gameland', conn, './data/gameland_data.csv', if_exists='replace')
+    createTable('geekach', conn, './data/geekach_data.csv', if_exists='replace')
+    createTable('woodcat', conn, './data/woodcat_data.csv', if_exists='replace')
+    conn.close()
