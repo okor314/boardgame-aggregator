@@ -1,5 +1,6 @@
 import psycopg2
 from config import config
+from thefuzz import fuzz, process
 
 DATABASE_CONFIG = config(filename='./database/database.ini')
 
@@ -11,10 +12,11 @@ def createGameTable(connection):
     cursor.execute("""CREATE TABLE IF NOT EXISTS game (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
-                min_players SMALLINT DEFAULT NULL,
-                max_players SMALLINT DEFAULT NULL,
-                age SMALLINT DEFAULT NULL,
-                bbg_url TEXT DEFAULT NULL,
+                min_players SMALLINT,
+                max_players SMALLINT,
+                age SMALLINT,
+                bbg_url TEXT,
+                maker TEXT,
                 gameland_id INT,
                 geekach_id INT,
                 woodcat_id INT
