@@ -124,20 +124,16 @@ def getMissingRows(tableName: str, columns: list, connection):
 
     return columns, rows
 
-def isequal(columnName, value) -> str:
-    """Helper function for 'chooseOne'
-      to make correct conditions in query."""
+def isequal(columnName, value):
+    """Return (SQL condition string, [param]) for safe parameterized query."""
     if value is None:
-        return f'{columnName} IS NULL'
+        return f"{columnName} IS NULL", []
     else:
-        return f"{columnName} = %s" %value
+        return f"{columnName} = %s", [value]
 
 def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None):
-    """game_choises is optional parameter, if provided than it used
-    as choises for fuzzy matching. It should be list of tuples (id, str).
-    Return: (id, title, score)"""
+    """Safely select candidate games with matching numeric/text features."""
     cursor = connection.cursor()
-    # table_id = table_row[0]
     table_title = table_row[1]
     table_min = table_row[2]
     table_max = table_row[3]
@@ -146,14 +142,29 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
 
     choises = game_choises
     if game_choises is None:
-        cursor.execute(f"""SELECT id, title FROM game
-                    WHERE 1=1
-                    AND {isequal('min_players', table_min)}
-                    AND {isequal('max_players', table_max)}
-                    AND {isequal('age', table_age)}
-                    AND {isequal('maker', table_maker)}
-                    AND {tableName}_id IS NULL
-                    ORDER BY id;""")
+        conditions = []
+        params = []
+
+        # Build conditions safely
+        for col, val in [
+            ('min_players', table_min),
+            ('max_players', table_max),
+            ('age', table_age),
+            ('maker', table_maker)
+        ]:
+            cond, param = isequal(col, val)
+            conditions.append(cond)
+            params.extend(param)
+
+        where_clause = " AND ".join(conditions)
+        query = f"""
+            SELECT id, title FROM game
+            WHERE {where_clause}
+              AND {tableName}_id IS NULL
+            ORDER BY id;
+        """
+
+        cursor.execute(query, params)
         choises = cursor.fetchall()
 
     match = fuzzMatching(table_title, choises)
@@ -172,7 +183,7 @@ def getGamesWithBBG(tableName, bbg_url, connection):
     return result
 
 #updateByBBG('geekach', conn)
-#updateByFeatures('geekach', conn)
+updateByFeatures('geekach', conn)
 #print(fuzzMatching('d', []))
 # cur.execute("""SELECT * FROM gameland""")
 # a = cur.fetchone()
