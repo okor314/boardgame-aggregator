@@ -83,18 +83,20 @@ def fuzzMatching(string, choises, minScore = 0, scorer = fuzz.ratio):
     bestChoises = list(filter(lambda score: score[2] >= minScore, scores))
     return max(bestChoises, key=lambda x: x[2], default=None) 
 
-def insertOneRow(tableName: str, row: tuple, connection):
+def insertOneRow(tableName: str, columns: list, row: tuple, connection):
     cursor = connection.cursor()
-    row = str(row)
+    columns = [f"{tableName}_id" if col=='id' else col for col in columns]
+    selectedColumns = ','.join(columns)
+    values = ','.join('%s' for col in columns)
     cursor.execute(f"""INSERT INTO game
-                   ({tableName}_id, title, min_players, max_players, age, maker, bbg_url)
-                   VALUES {row};""")
+                   ({selectedColumns})
+                   VALUES ({values});""", row)
     connection.commit()
     cursor.close()
 
-def insertRows(tableName: str, rows: list, connection):
+def insertRows(tableName: str, columns: list, rows: list, connection):
     for row in rows:
-        insertOneRow(tableName, row, connection)
+        insertOneRow(tableName, columns, row, connection)
 
 def isColumnExists(tableName: str, column: str, connection) -> bool:
     cursor = connection.cursor()
@@ -183,12 +185,11 @@ def getGamesWithBBG(tableName, bbg_url, connection):
     return result
 
 #updateByBBG('geekach', conn)
-updateByFeatures('geekach', conn)
+#updateByFeatures('woodcat', conn)
 #print(fuzzMatching('d', []))
 # cur.execute("""SELECT * FROM gameland""")
 # a = cur.fetchone()
 # print(str(a))
-# insertOneRow('gameland', row, conn)
 
 cur.close()
 conn.close()
