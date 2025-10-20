@@ -184,6 +184,18 @@ def getGamesWithBBG(tableName, bbg_url, connection):
     cursor.close()
     return result
 
+def createConnections(tableName, connection):
+    createGameTable(connection)
+    updateByBBG(tableName, connection)
+    updateByFeatures(tableName, connection)
+
+    # If there any rows in tableName left not connected to
+    # table game, inserting them
+    columns, missingRows = getMissingRows(tableName,
+                                 ['id', 'title', 'min_players', 'max_players', 'age', 'maker', 'bbg_url'],
+                                 connection)
+    insertRows(tableName, columns, missingRows, connection)
+
 #updateByBBG('geekach', conn)
 #updateByFeatures('woodcat', conn)
 #print(fuzzMatching('d', []))
