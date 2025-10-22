@@ -1,5 +1,5 @@
 import psycopg2
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from config import config
 import pandas as pd
 
@@ -73,16 +73,41 @@ def createTable(name, connection, pathToCSV, if_exists='fail'):
                 RENAME COLUMN id TO {name}_id""")
     cur.execute(f"""ALTER TABLE {name}
                 ADD COLUMN id SERIAL PRIMARY KEY""")
+    # Specifying that url must be uniqe
+    cur.execute(f"""ALTER TABLE {name} 
+                ADD CONSTRAINT constraint_name UNIQUE (url);""")
     conn.commit()
     cur.close()
     conn.close()
 
+def upsertTable(tableName, connection, pathToNewData):
+    transdf = pd.read_csv(pathToNewData)
+    transdf = prepareDataFrame(transdf)
+    transdf.to_sql(f'trans_{tableName}', connection, if_exists='replace', index=False)
+
+    columns = [f'{tableName}_id' if col=='id' else col for col in transdf.columns]
+    selectedColumns = ','.join(columns)
+    transColumns = ','.join(transdf.columns)
+
+    query = text(f"""INSERT INTO {tableName} ({selectedColumns})
+                       SELECT {transColumns} FROM trans_{tableName}
+                       ON CONFLICT(url)
+                       DO UPDATE SET
+                       in_stock = excluded.in_stock,
+                       price = excluded.price;""")
+    connection.execute(query)
+    connection.execute(text(f'DROP TABLE trans_{tableName};'))
+    connection.commit()
+
+
 if __name__ == "__main__":
-    params = DATABASE_CONFIG
-    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
-    conn = engine.connect()
+    # params = DATABASE_CONFIG
+    # engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
+    # conn = engine.connect()
     
-    createTable('gameland', conn, './data/gameland_data.csv', if_exists='replace')
-    createTable('geekach', conn, './data/geekach_data.csv', if_exists='replace')
-    createTable('woodcat', conn, './data/woodcat_data.csv', if_exists='replace')
-    conn.close()
+    # # createTable('gameland', conn, './data/gameland_data.csv', if_exists='replace')
+    # # createTable('geekach', conn, './data/geekach_data.csv', if_exists='replace')
+    # # createTable('woodcat', conn, './data/woodcat_data.csv', if_exists='replace')
+
+    # conn.close()
+    pass
