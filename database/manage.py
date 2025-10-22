@@ -2,11 +2,9 @@ import psycopg2
 from config import config
 from thefuzz import fuzz, process
 
-DATABASE_CONFIG = config(filename='./database/database.ini')
-FUZZ_BARRIER = 50
+DATABASE_CONFIG_PATH = './database/database.ini'
+FUZZ_BARRIER = 60
 
-conn = psycopg2.connect(**DATABASE_CONFIG)
-cur = conn.cursor()
 
 def createGameTable(connection):
     cursor = connection.cursor()
@@ -77,7 +75,7 @@ def updateByFeatures(tableName, connection, rows: list = []):
             connection.commit()
     cursor.close()  
 
-def fuzzMatching(string, choises, minScore = 0, scorer = fuzz.ratio):
+def fuzzMatching(string, choises, minScore = FUZZ_BARRIER, scorer = fuzz.WRatio):
     """choises is lists of tuples (id, str)"""
     scores = ((id, choise, scorer(string, choise)) for id, choise in choises)
     bestChoises = list(filter(lambda score: score[2] >= minScore, scores))
@@ -196,13 +194,24 @@ def createConnections(tableName, connection):
                                  connection)
     insertRows(tableName, columns, missingRows, connection)
 
-#updateByBBG('geekach', conn)
-#updateByFeatures('woodcat', conn)
-#print(fuzzMatching('d', []))
-# cur.execute("""SELECT * FROM gameland""")
-# a = cur.fetchone()
-# print(str(a))
+def updateGameTable(connection):
+    cursor = connection.cursor()
+    cursor.execute("""SELECT name FROM site
+                   ORDER BY id;""")
+    names = [row[0] for row in cursor.fetchall()]
+    cursor.close()
 
-cur.close()
-conn.close()
+    for name in names:
+        createConnections(name, connection)
+
+if __name__ == "__main__":
+    # params = config(DATABASE_CONFIG_PATH)
+    # conn = psycopg2.connect(**params)
+    # import time
+    # start = time.time()
+    # updateGameTable(conn)
+    # end = time.time()
+    # print(end - start)
+    # conn.close()
+    pass
 
