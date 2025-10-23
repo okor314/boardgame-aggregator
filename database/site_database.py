@@ -59,24 +59,35 @@ def prepareDataFrame(df: pd.DataFrame):
     df = df[columns]
     return df
     
-def createTable(name, connection, pathToCSV, if_exists='fail'):
+def _createTable(name, connection, pathToCSV):
+    """This function will DROP your existing table.
+    Do not use it if you don't want to lose your data"""
     df = pd.read_csv(pathToCSV)
     df = prepareDataFrame(df)
+    df.rename(columns={'id': f'{name}_id'})
+    # Definition of bbg column in SQL if it's present in dataframe
+    bbg_column = 'bbg_url TEXT,' if 'bbg_url' in df.columns else ''
 
-    df.to_sql(name, connection, index=False, if_exists=if_exists)
-
-    # Renaming id from site and adding database selfincremental id
     conn = psycopg2.connect(**DATABASE_CONFIG)
     cur = conn.cursor()
-
-    cur.execute(f"""ALTER TABLE {name}
-                RENAME COLUMN id TO {name}_id""")
-    cur.execute(f"""ALTER TABLE {name}
-                ADD COLUMN id SERIAL PRIMARY KEY""")
-    # Specifying that url must be uniqe
-    cur.execute(f"""ALTER TABLE {name} 
-                ADD CONSTRAINT constraint_name UNIQUE (url);""")
+    cur.execute(f'DROP TABLE IF EXISTS {name}')
     conn.commit()
+    cur.execute(f"""CREATE TABLE IF NOT EXISTS {name} (
+                id          SERIAL PRIMARY KEY,
+                {name}_id   TEXT,
+                title       TEXT,
+                in_stock    TEXT,
+                price       REAL,
+                min_players SMALLINT,
+                max_players SMALLINT,
+                age         SMALLINT,
+                maker       TEXT,
+                url         TEXT UNIQUE,
+                {bbg_column}
+                lastchecked DATE DEFAULT current_date);""")
+    conn.commit()
+    # Adding values to new table
+    upsertTable(name, connection, pathToCSV)
     cur.close()
     conn.close()
 
@@ -94,20 +105,21 @@ def upsertTable(tableName, connection, pathToNewData):
                        ON CONFLICT(url)
                        DO UPDATE SET
                        in_stock = excluded.in_stock,
-                       price = excluded.price;""")
+                       price = excluded.price,
+                       lastchecked = current_date;""")
     connection.execute(query)
     connection.execute(text(f'DROP TABLE trans_{tableName};'))
     connection.commit()
 
 
 if __name__ == "__main__":
-    # params = DATABASE_CONFIG
-    # engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
-    # conn = engine.connect()
+    params = DATABASE_CONFIG
+    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
+    conn = engine.connect()
     
-    # # createTable('gameland', conn, './data/gameland_data.csv', if_exists='replace')
-    # # createTable('geekach', conn, './data/geekach_data.csv', if_exists='replace')
-    # # createTable('woodcat', conn, './data/woodcat_data.csv', if_exists='replace')
+    _createTable('gameland', conn, './data/gameland_data.csv')
+    _createTable('geekach', conn, './data/geekach_data.csv')
+    _createTable('woodcat', conn, './data/woodcat_data.csv')
 
-    # conn.close()
+    conn.close()
     pass
