@@ -3,8 +3,8 @@ import time
 import json
 
 class ScrapingLogger:
-    def __init__(self, level=logging.DEBUG, fileName='./scraping.log'):
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, name=__name__, level=logging.DEBUG, fileName='./scraping.log'):
+        self.logger = logging.getLogger(name)
         self.logger.setLevel(level)
         formater = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s: %(message)s', datefmt='%d-%m-%Y %H:%M:%S')
 
@@ -26,10 +26,10 @@ class ScrapingLogger:
         self.logger.info('Scraping started')
 
     def failedURL(self, url, exc_info=False, status_code=None):
-        self.logger.error(f'{status_code+' ' if status_code else ''}Failed url: {url}', exc_info=exc_info)
+        self.logger.error(f'{str(status_code)+' ' if status_code else ''}Failed url: {url}', exc_info=exc_info)
 
-    def failedPagination(self, pageNum = None, status_code=None):
-        self.logger.critical(f'{status_code+' ' if status_code else ''}Pagination failed at page {pageNum}')
+    def failedPagination(self, url, exc_info=False, status_code=None):
+        self.logger.critical(f'{str(status_code)+' ' if status_code else ''}Pagination failed at url: {url}', exc_info=exc_info)
 
     def increaseItemsScraped(self, n):
         self.items_scraped += n

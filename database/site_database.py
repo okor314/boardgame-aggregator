@@ -50,6 +50,7 @@ def prepareDataFrame(df: pd.DataFrame):
     df['min_players'] = df.players.apply(getMin).astype('Int8')
     df['max_players'] = df.players.apply(getMax).astype('Int8')
     df['age'] = df.age.apply(getMin).astype('Int8')
+    df['maker'] = df.maker.apply(lambda x: x.lower().replace(' ', ''))
 
     df = df.drop('players', axis='columns')
 

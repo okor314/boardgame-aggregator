@@ -14,8 +14,8 @@ def createGameTable(connection):
                 min_players SMALLINT,
                 max_players SMALLINT,
                 age SMALLINT,
-                bbg_url TEXT,
                 maker TEXT,
+                bbg_url TEXT,
                 gameland_id INT,
                 geekach_id INT,
                 woodcat_id INT
