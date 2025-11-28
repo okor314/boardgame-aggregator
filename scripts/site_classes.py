@@ -4,7 +4,7 @@ class HoroshoSite:
     siteName = 'horosho'
 
     def __init__(self):
-        self._baseUrl = 'https://www.google.com/'
+        self._baseUrl = 'https://www.google.com'
         self.startUrl = 'https://www.google.com/'
         self.logger = ScrapingLogger(self.siteName)
 
@@ -51,7 +51,7 @@ class Gameland(HoroshoSite):
 
     def __init__(self):
         super().__init__()
-        self._baseUrl = 'https://gameland.com.ua/'
+        self._baseUrl = 'https://gameland.com.ua'
         self.startUrl = 'https://gameland.com.ua/catalog/'
 
 class Geekach(HoroshoSite):
@@ -59,7 +59,7 @@ class Geekach(HoroshoSite):
 
     def __init__(self):
         super().__init__()
-        self._baseUrl = 'https://geekach.com.ua/'
+        self._baseUrl = 'https://geekach.com.ua'
         self.startUrl = 'https://geekach.com.ua/nastilni-ihry/'
 
         self._dataSelectors.update(
@@ -80,7 +80,7 @@ class Woodcat(HoroshoSite):
 
     def __init__(self):
         super().__init__()
-        self._baseUrl = 'https://woodcat.com.ua/'
+        self._baseUrl = 'https://woodcat.com.ua'
         self.startUrl = 'https://woodcat.com.ua/katalog/1054/'
 
         self._dataSelectors.update(

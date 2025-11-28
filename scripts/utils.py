@@ -30,7 +30,7 @@ def saveTo(path, data: list, mode = None, columns: list = []):
     else:
         with open(path, 'a', encoding='utf-8') as f:
             for item in data:
-                values = [str(value) for value in item.values()]
+                values = [str(value) if value is not None else '' for value in item.values()]
                 values = formatValues(values)
                 f.write('\n'+','.join(values))
 

@@ -4,6 +4,8 @@ from playwright_stealth import Stealth
 import requests
 from bs4 import BeautifulSoup
 
+from dataclasses import dataclass
+import time
 from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 
@@ -11,13 +13,20 @@ from site_classes import *
 from proxy import Proxy
 from utils import errorCatcher, saveTo
 
+@dataclass 
+class Context:
+    workers: int = 1
+    sleep_break: float = 0
+
+
 class Scraper:
-    def __init__(self, siteClass: Gameland, proxies=Proxy()):
+    def __init__(self, siteClass: Gameland, proxies=Proxy(), context: Context = Context()):
         self.site = siteClass()
         self.logger = self.site.logger
         self.proxies = proxies
         self.session = requests.Session()
-        self.pathToSave = f'./data/{self.site.siteName}_data_csv'
+        self.pathToSave = f'./data/{self.site.siteName}_data.csv'
+        self.context = context
 
         # Making functions that apply on html-elements
         # return None if error occurs
@@ -42,6 +51,9 @@ class Scraper:
         # Extracting data from them
         data = {k:form(dataContainers[k]) for k, form in self.formaters.items()}
         data.update({'url': url})
+
+        # Sleep for some time to reduce load no server
+        time.sleep(self.context.sleep_break)
 
         return data
         
@@ -78,7 +90,7 @@ class Scraper:
                 self.logger.failedPagination(nextPageLink, status_code=page.status_code)
 
             soup = BeautifulSoup(page.text, 'html.parser')
-            gamesData = self.scrapeCatalog(soup, workers=7)
+            gamesData = self.scrapeCatalog(soup, workers=self.context.workers)
             self.logger.increaseItemsScraped(len(gamesData))
             saveTo(pathToSave, gamesData)
 
@@ -118,7 +130,8 @@ class Scraper:
 
 if __name__ == '__main__':
      proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
-     scr = Scraper(Geekach, proxy)
-     data = scr.scrape('./data/test.csv', stopAt=40)
+     context = Context(7, 4)
+     scr = Scraper(Gameland, proxy, context)
+     data = scr.scrape()
 
      print(data)

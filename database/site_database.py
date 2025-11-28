@@ -50,7 +50,7 @@ def prepareDataFrame(df: pd.DataFrame):
     df['min_players'] = df.players.apply(getMin).astype('Int8')
     df['max_players'] = df.players.apply(getMax).astype('Int8')
     df['age'] = df.age.apply(getMin).astype('Int8')
-    df['maker'] = df.maker.apply(lambda x: x.lower().replace(' ', ''))
+    df['maker'] = df.maker.apply(lambda x: x.lower().replace(' ', '') if isinstance(x, str) else x)
 
     df = df.drop('players', axis='columns')
 
@@ -118,9 +118,6 @@ if __name__ == "__main__":
     engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
     conn = engine.connect()
     
-    _createTable('gameland', conn, './data/gameland_data.csv')
-    _createTable('geekach', conn, './data/geekach_data.csv')
-    _createTable('woodcat', conn, './data/woodcat_data.csv')
 
     conn.close()
     pass
