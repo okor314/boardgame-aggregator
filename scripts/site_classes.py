@@ -1,4 +1,6 @@
 from logger import ScrapingLogger
+import re
+import json
 
 class HoroshoSite:
     siteName = 'horosho'
@@ -16,6 +18,7 @@ class HoroshoSite:
             'players':  'tr.product-features__row:has(th:contains("Кількість гравців")) td',
             'age':      'tr.product-features__row:has(th:contains("Вік")) td',
             'maker':    'tr.product-features__row:has(th:contains("Видавець")) td',
+            'url':      'link[rel="canonical"]',
             'bbg_url':  'tr.product-features__row:has(th:contains("Рейтинг")) td a'
         }
 
@@ -28,9 +31,11 @@ class HoroshoSite:
             'players':  lambda x: x.text.strip(),
             'age':      lambda x: x.text.strip(),
             'maker':    lambda x: x.text.strip(),
+            'url':      lambda x: x.get('href'),
             'bbg_url':  lambda x: x.get('href')
         }
-
+        
+        self._fieldnames = list(self._dataSelectors.keys())
         self.linksSelector = 'div.catalogCard-title a'
         self.nextPageSelector = 'a[class="pager__item pager__item--forth j-catalog-pagination-btn"]'
 
@@ -45,6 +50,22 @@ class HoroshoSite:
     @property
     def dataFormaters(self):
         return self._dataFormaters
+    
+    @property
+    def fieldnames(self):
+        return self._fieldnames
+    
+    @staticmethod
+    def extractCatalogData(html):
+        match = re.search(r"products = (\[.*?\]),", html, re.S)
+        products = json.loads(match.group(1))
+        
+        return [{
+            'id':       product.get('article'),
+            'in_stock': product.get('in_stock'),
+            'price':    product.get('price'),
+            'url':      product.get('url'),
+        } for product in products]
     
 class Gameland(HoroshoSite):
     siteName = 'gameland'
@@ -99,6 +120,10 @@ class Woodcat(HoroshoSite):
 
 if __name__ == '__main__':
     instance = Gameland()
-    c = list(instance.dataSelectors.keys()) + ['url']
-    print(c)
+    # c = list(instance.dataSelectors.keys()) + ['url']
+    # print(c)
+    with open('./page.txt', 'r', encoding='utf-8') as f:
+        html = f.read()
+    print(instance.extractCatalogData(html))
+    print(instance.fieldnames)
     
