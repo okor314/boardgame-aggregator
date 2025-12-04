@@ -1,4 +1,4 @@
-from logger import ScrapingLogger
+from scripts.logger import ScrapingLogger
 import re
 import json
 
@@ -19,20 +19,20 @@ class HoroshoSite:
             'age':      'tr.product-features__row:has(th:contains("Вік")) td',
             'maker':    'tr.product-features__row:has(th:contains("Видавець")) td',
             'url':      'link[rel="canonical"]',
-            'bbg_url':  'tr.product-features__row:has(th:contains("Рейтинг")) td a'
+            'bgg_id':  'tr.product-features__row:has(th:contains("Рейтинг")) td a'
         }
 
         # Functions to use on selected hmtl-elements
         self._dataFormaters = {
             'id':       lambda x: x.text.strip().replace('Артикул: ', ''),
             'title':    lambda x: x.text.strip().replace('Настільна гра ', ''),
-            'in_stock': lambda x: x.text.strip(),
+            'in_stock': lambda x: x.text.strip() == 'В наявності',
             'price':    lambda x: float(x.get('content')),
             'players':  lambda x: x.text.strip(),
             'age':      lambda x: x.text.strip(),
             'maker':    lambda x: x.text.strip(),
             'url':      lambda x: x.get('href'),
-            'bbg_url':  lambda x: x.get('href')
+            'bgg_id':  lambda x: int(re.findall(r'(\d+)', x.get('href'))[0])
         }
         
         self._fieldnames = list(self._dataSelectors.keys())
@@ -87,7 +87,7 @@ class Geekach(HoroshoSite):
             {
                 'id':       'meta[itemprop="sku"]',
                 'players':  'tr.product-features__row:has(th:contains("Гравців")) td',
-                'bbg_url':  'tr.product-features__row:has(th:contains("BBG")) td'
+                'bgg_id':  'tr.product-features__row:has(th:contains("BGG")) td a'
             }
         )
         self._dataFormaters.update(
@@ -115,8 +115,8 @@ class Woodcat(HoroshoSite):
             }
         )
      
-        del self._dataSelectors['bbg_url']
-        del self._dataFormaters['bbg_url']
+        del self._dataSelectors['bgg_id']
+        del self._dataFormaters['bgg_id']
 
 if __name__ == '__main__':
     instance = Gameland()

@@ -67,7 +67,7 @@ def _createTable(name, connection, pathToCSV):
     df = prepareDataFrame(df)
     df.rename(columns={'id': f'{name}_id'})
     # Definition of bbg column in SQL if it's present in dataframe
-    bbg_column = 'bbg_url TEXT,' if 'bbg_url' in df.columns else ''
+    bgg_column = 'bgg_id INTEGER,' if 'bgg_id' in df.columns else ''
 
     conn = psycopg2.connect(**DATABASE_CONFIG)
     cur = conn.cursor()
@@ -77,14 +77,14 @@ def _createTable(name, connection, pathToCSV):
                 id          SERIAL PRIMARY KEY,
                 {name}_id   TEXT,
                 title       TEXT,
-                in_stock    TEXT,
+                in_stock    BOOLEAN,
                 price       REAL,
                 min_players SMALLINT,
                 max_players SMALLINT,
                 age         SMALLINT,
                 maker       TEXT,
                 url         TEXT UNIQUE,
-                {bbg_column}
+                {bgg_column}
                 lastchecked DATE DEFAULT current_date);""")
     conn.commit()
     # Adding values to new table

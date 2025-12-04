@@ -15,7 +15,7 @@ def createGameTable(connection):
                 max_players SMALLINT,
                 age SMALLINT,
                 maker TEXT,
-                bbg_url TEXT,
+                bgg_id INT,
                 gameland_id INT,
                 geekach_id INT,
                 woodcat_id INT
@@ -24,27 +24,27 @@ def createGameTable(connection):
     cursor.close()
 
 def updateByBBG(tableName, connection):
-    # Abort if bbg_url is not exists
-    if not isColumnExists(tableName, 'bbg_url', connection):
+    # Abort if bgg_id is not exists
+    if not isColumnExists(tableName, 'bgg_id', connection):
         return
     
     cursor = connection.cursor()
 
     # Selecting rows with id not in game table
-    _, rows = getMissingRows(tableName, ['id', 'bbg_url'], connection)
+    _, rows = getMissingRows(tableName, ['id', 'bgg_id'], connection)
 
     if not rows: return     # Abort if all items from table alredy in game table
 
     for row in rows:
         table_id = row[0]
-        bbg_url = row[1]
-        if bbg_url is None: continue
+        bgg_id = row[1]
+        if bgg_id is None: continue
         
         cursor.execute(f"""SELECT id, title, min_players, max_players, age, maker
                         FROM {tableName}
                         WHERE id = {table_id};""")
         features = cursor.fetchone()
-        game_choises = getGamesWithBBG(tableName, bbg_url, connection)
+        game_choises = getGamesWithBBG(tableName, bgg_id, connection)
         match = chooseOne(tableName, features, connection, game_choises=game_choises)
         
         if not match: continue
@@ -172,10 +172,10 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
 
     return match
 
-def getGamesWithBBG(tableName, bbg_url, connection):
+def getGamesWithBBG(tableName, bgg_id, connection):
     cursor = connection.cursor()
     cursor.execute(f"""SELECT id, title FROM game
-                WHERE bbg_url = '{bbg_url}'
+                WHERE bgg_id = {bgg_id}
                 AND {tableName}_id IS NULL
                 ORDER BY id;""")
     result = cursor.fetchall()
@@ -190,7 +190,7 @@ def createConnections(tableName, connection):
     # If there any rows in tableName left not connected to
     # table game, inserting them
     columns, missingRows = getMissingRows(tableName,
-                                 ['id', 'title', 'min_players', 'max_players', 'age', 'maker', 'bbg_url'],
+                                 ['id', 'title', 'min_players', 'max_players', 'age', 'maker', 'bgg_id'],
                                  connection)
     insertRows(tableName, columns, missingRows, connection)
 
