@@ -1,5 +1,5 @@
 import psycopg2
-from config import config
+from database.config import config
 
 def createHistoryTable(connection):
     cursor = connection.cursor()
@@ -33,5 +33,5 @@ def updateHistoryTable(connection):
 if __name__ == "__main__":
     params = config('./database/database.ini')
     conn = psycopg2.connect(**params)
-    createHistoryTable(conn)
+    updateHistoryTable(conn)
     conn.close()

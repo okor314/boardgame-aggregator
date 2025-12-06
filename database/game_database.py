@@ -1,5 +1,5 @@
 import psycopg2
-from config import config
+from database.config import config
 from thefuzz import fuzz, process
 
 DATABASE_CONFIG_PATH = './database/database.ini'
@@ -205,13 +205,13 @@ def updateGameTable(connection):
         createConnections(name, connection)
 
 if __name__ == "__main__":
-    # params = config(DATABASE_CONFIG_PATH)
-    # conn = psycopg2.connect(**params)
-    # import time
-    # start = time.time()
-    # updateGameTable(conn)
-    # end = time.time()
-    # print(end - start)
-    # conn.close()
+    params = config(DATABASE_CONFIG_PATH)
+    conn = psycopg2.connect(**params)
+    import time
+    start = time.time()
+    updateGameTable(conn)
+    end = time.time()
+    print(end - start)
+    conn.close()
     pass
 

@@ -1,11 +1,17 @@
 import psycopg2
 from sqlalchemy import create_engine, text
-from config import config
+from database.config import config
 import pandas as pd
 
 from collections.abc import Iterable
 
 DATABASE_CONFIG = config(filename='./database/database.ini')
+
+def getConnection():
+    params = DATABASE_CONFIG
+    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}:{params.get('port')}/{params['database']}")
+    conn = engine.connect()
+    return conn
 
 def removeChar(string: str, char):
     if not isinstance(string, str):
@@ -118,6 +124,6 @@ if __name__ == "__main__":
     engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
     conn = engine.connect()
     
-
+    upsertTable('woodcat', conn, './data/woodcat.csv')
     conn.close()
     pass
