@@ -1,2 +1,4 @@
 __pycache__
 database.ini
+scraping.log
+data/
