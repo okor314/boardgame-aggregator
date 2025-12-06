@@ -9,9 +9,10 @@ import time
 from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 
-from site_classes import *
-from proxy import Proxy
-from utils import errorCatcher, saveTo
+from scripts.site_classes import *
+from scripts.proxy import Proxy
+from scripts.utils import errorCatcher, TableWriter
+from database.utils import getURLs
 
 @dataclass 
 class Context:
@@ -25,8 +26,8 @@ class Scraper:
         self.logger = self.site.logger
         self.proxies = proxies
         self.session = requests.Session()
-        self.pathToSave = f'./data/{self.site.siteName}_data.csv'
         self.context = context
+        self.writer = TableWriter(self.site.fieldnames, output_dir='./data')
 
         # Making functions that apply on html-elements
         # return None if error occurs
@@ -35,12 +36,16 @@ class Scraper:
         
         self.failedURLs = []
 
+        # URLs that already in database
+        self.existingURLs = getURLs(self.site.siteName)
+
     def scrapeDetailPage(self, url: str) -> dict:
         try:
             page = self.session.get(url, proxies=self.proxies.proxyForRequests())
         except:
             self.logger.failedURL(url, exc_info=True)
-            return url
+            self.failedURLs.append(url)
+            return {'url': url, 'failed': True}
         if page.status_code != 200:
              self.logger.failedURL(url, status_code=page.status_code)
 
@@ -50,7 +55,6 @@ class Scraper:
         dataContainers = {k: soup.select_one(selector) for k, selector in self.site.dataSelectors.items()}
         # Extracting data from them
         data = {k:form(dataContainers[k]) for k, form in self.formaters.items()}
-        data.update({'url': url})
 
         # Sleep for some time to reduce load no server
         time.sleep(self.context.sleep_break)
@@ -64,22 +68,19 @@ class Scraper:
         return result
     
     def scrapeCatalog(self, soup: BeautifulSoup, workers: int = 1):
-        links = self._getLinks(soup)
-        data = self.scrapeWihtThreads(links, workers=workers)
+        catalogData = self.site.extractCatalogData(soup.__repr__())
 
-        self.failedURLs.extend([item for item in data if type(item) is str])
-        gamesData = [item for item in data if type(item) is dict]
+        links = self._getLinks(catalogData)
+        detailData = self.scrapeWihtThreads(links, workers=workers)
+
+        gamesData = self._mergeData(detailData, catalogData)
 
         return gamesData
     
-    def scrape(self, pathToSave = '', stopAt: int=None):
-        pathToSave = self.pathToSave if pathToSave == '' else pathToSave
+    def scrape(self, tableName: str, stopAt: int=None):
         self.logger.startMessage()
         self._updateSession()
         nextPageLink = self.site.startUrl
-        # Saving
-        columnNames = list(self.site.dataSelectors.keys()) + ['url']
-        saveTo(pathToSave, [], mode='newfile', columns=columnNames)
 
         while nextPageLink is not None:
             try:
@@ -92,7 +93,8 @@ class Scraper:
             soup = BeautifulSoup(page.text, 'html.parser')
             gamesData = self.scrapeCatalog(soup, workers=self.context.workers)
             self.logger.increaseItemsScraped(len(gamesData))
-            saveTo(pathToSave, gamesData)
+            # Saving
+            self.writer.writerows(gamesData, tableName)
 
             pageNum = soup.select_one('span[class*="pager__item is-active"]').text.strip()
             print(pageNum, self.logger.items_scraped)
@@ -105,10 +107,15 @@ class Scraper:
         return self.failedURLs
             
     
-    def _getLinks(self, soup: BeautifulSoup):
-        elements = soup.select(self.site.linksSelector)
-        links = [self.site.baseUrl + el.get('href') for el in elements]
-        return links
+    def _getLinks(self, catalogData: list[dict]):
+        # URLs that have missing data in catalog
+        links = [product.get('url') for product in catalogData 
+                 if (not product.get('price')) or (product.get('in_stock') is None)]
+        # URLs of new products
+        newLinks = [product.get('url') for product in catalogData 
+                    if product.get('url') not in self.existingURLs]
+        links.extend(newLinks)
+        return set(links)
 
     def _getHeaders(self):
         with Stealth().use_sync(sync_playwright()) as playwright:
@@ -126,12 +133,24 @@ class Scraper:
         headers = self._getHeaders()
         self.session.headers.update(headers)
 
+    def _mergeData(self, detailData: list[dict], shortData: list[dict]) -> list[dict]:
+        """Helper function to merge data from catalog page and data from detail pages."""
+        failedURLs = [product.get('url') for product in detailData if product.get('failed')]
+        right = {product.get('url'): product for product in detailData
+                 if product.get('url') not in failedURLs}
+        left = {product.get('url'): product for product in shortData
+                if product.get('url') not in failedURLs}
+
+        # Replacing with detailed data
+        left.update(right)
+        return list(left.values())
         
 
 if __name__ == '__main__':
-     proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
-     context = Context(7, 4)
-     scr = Scraper(Gameland, proxy, context)
-     data = scr.scrape()
+    proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
+    context = Context(7, 4)
+    scr = Scraper(Woodcat, proxy, context)
 
-     print(data)
+    data = scr.scrape(tableName='woodcat')
+
+    print(data)

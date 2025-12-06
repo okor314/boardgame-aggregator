@@ -117,6 +117,7 @@ class Woodcat(HoroshoSite):
      
         del self._dataSelectors['bgg_id']
         del self._dataFormaters['bgg_id']
+        self._fieldnames = list(self._dataSelectors.keys())
 
 if __name__ == '__main__':
     instance = Gameland()
