@@ -1,14 +1,16 @@
 import psycopg2
-from database.config import config
 from thefuzz import fuzz, process
 
+from database.config import config
+from database.utils import fuzzMatching
+
+
 DATABASE_CONFIG_PATH = './database/database.ini'
-FUZZ_BARRIER = 60
 
 
 def createGameTable(connection):
     cursor = connection.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS game (
+    cursor.execute("""CREATE TABLE IF NOT EXISTS test (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
                 min_players SMALLINT,
@@ -50,7 +52,7 @@ def updateByBBG(tableName, connection):
         if not match: continue
         game_id = match[0]
 
-        cursor.execute(f"""UPDATE game
+        cursor.execute(f"""UPDATE test
                     SET {tableName}_id = {table_id}
                     WHERE id = {game_id};""")
     connection.commit()
@@ -69,24 +71,20 @@ def updateByFeatures(tableName, connection, rows: list = []):
         table_id = row[0]
         match = chooseOne(tableName, row, connection)
         if match:
-            cursor.execute(f"""UPDATE game
+            cursor.execute(f"""UPDATE test
                         SET {tableName}_id = {table_id}
                         WHERE id = {match[0]};""")
             connection.commit()
     cursor.close()  
 
-def fuzzMatching(string, choises, minScore = FUZZ_BARRIER, scorer = fuzz.WRatio):
-    """choises is lists of tuples (id, str)"""
-    scores = ((id, choise, scorer(string, choise)) for id, choise in choises)
-    bestChoises = list(filter(lambda score: score[2] >= minScore, scores))
-    return max(bestChoises, key=lambda x: x[2], default=None) 
+ 
 
 def insertOneRow(tableName: str, columns: list, row: tuple, connection):
     cursor = connection.cursor()
     columns = [f"{tableName}_id" if col=='id' else col for col in columns]
     selectedColumns = ','.join(columns)
     values = ','.join('%s' for col in columns)
-    cursor.execute(f"""INSERT INTO game
+    cursor.execute(f"""INSERT INTO test
                    ({selectedColumns})
                    VALUES ({values});""", row)
     connection.commit()
@@ -115,9 +113,9 @@ def getMissingRows(tableName: str, columns: list, connection):
     cursor = connection.cursor()
     cursor.execute(f"""SELECT {selectedColumns} 
                    FROM {tableName} as t
-                   LEFT JOIN game
-                   ON t.id = game.{tableName}_id
-                   WHERE game.{tableName}_id IS NULL
+                   LEFT JOIN test
+                   ON t.id = test.{tableName}_id
+                   WHERE test.{tableName}_id IS NULL
                    ORDER BY t.id""")
     rows = cursor.fetchall()
     cursor.close()
@@ -158,7 +156,7 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
 
         where_clause = " AND ".join(conditions)
         query = f"""
-            SELECT id, title FROM game
+            SELECT id, title FROM test
             WHERE {where_clause}
               AND {tableName}_id IS NULL
             ORDER BY id;
@@ -174,7 +172,7 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
 
 def getGamesWithBBG(tableName, bgg_id, connection):
     cursor = connection.cursor()
-    cursor.execute(f"""SELECT id, title FROM game
+    cursor.execute(f"""SELECT id, title FROM test
                 WHERE bgg_id = {bgg_id}
                 AND {tableName}_id IS NULL
                 ORDER BY id;""")
