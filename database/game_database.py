@@ -1,8 +1,9 @@
 import psycopg2
 from thefuzz import fuzz, process
+from functools import partial
 
 from database.config import config
-from database.utils import fuzzMatching
+from database.utils import fuzzMatching, wordsPersentage
 
 
 DATABASE_CONFIG_PATH = './database/database.ini'
@@ -131,6 +132,8 @@ def isequal(columnName, value):
 
 def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None):
     """Safely select candidate games with matching numeric/text features."""
+    findMatch = partial(fuzzMatching, scorer=wordsPersentage)
+
     cursor = connection.cursor()
     table_title = table_row[1]
     table_min = table_row[2]
@@ -165,7 +168,20 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
         cursor.execute(query, params)
         choises = cursor.fetchall()
 
-    match = fuzzMatching(table_title, choises)
+    match = findMatch(table_title, choises)
+
+    # If none match found look at all available games
+    if match is None:
+        query = f"""
+            SELECT id, title FROM test
+            WHERE {tableName}_id IS NULL
+            ORDER BY id;
+        """
+
+        cursor.execute(query)
+        choises = cursor.fetchall()
+        match = findMatch(table_title, choises)
+
     cursor.close()
 
     return match
