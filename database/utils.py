@@ -67,6 +67,19 @@ def extract_ukrainian_fragments(title: str) -> str:
     
     return ''
 
+def wordsPersentage(title_1, title_2):
+    chars = [',', '.', ':', ';', '"', '?', '!', '(', ')', '«', '»']
+    title_1 = removeChar(title_1, chars)
+    title_2 = removeChar(title_2, chars)
+
+    words_1 = title_1.split(' ')
+    words_2 = title_2.split(' ')
+
+    match_1 = sum(word in words_2 for word in words_1)
+    match_2 = sum(word in words_1 for word in words_2)
+
+    return (match_1 + match_2) / (len(words_1) + len(words_2)) * 100
+
 if __name__ == '__main__':
     urls = getURLs('gameland')
     print(urls)
