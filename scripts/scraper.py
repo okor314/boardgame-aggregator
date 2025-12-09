@@ -147,7 +147,7 @@ class Scraper:
         
 
 if __name__ == '__main__':
-    proxy = Proxy(r'C:\Users\User\Jupyter Folder\Webshare 10 proxies.txt')
+    proxy = Proxy(r'https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25')
     context = Context(7, 4)
     scr = Scraper(Woodcat, proxy, context)
 

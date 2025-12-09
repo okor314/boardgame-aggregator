@@ -1,27 +1,45 @@
 import random
+import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv('./.env')
+PROXY_API_KEY = os.getenv('PROXY_API_KEY')
+PROXY_PLAN_ID = os.getenv('PROXY_PLAN_ID')
 
 class Proxy:
-    def __init__(self, proxy_filepath: str = ''):
+    def __init__(self, proxy_api_url: str = ''):
         self.proxies = []
         self.proxyDicts = []
         
-        self.setProxies(proxy_filepath)
+        self.setProxies(proxy_api_url)
         self.poolSize = len(self.proxies)
     
-    def setProxies(self, proxy_filepath: str):
+    def setProxies(self, proxy_api_url: str):
         self.proxies = []
         self.proxyDicts = []
-        if proxy_filepath == '': return
+        if proxy_api_url == '': return
 
         # restructure proxies in correct way
-        with open(proxy_filepath, 'r') as f:
-            text = f.read()
+        response = requests.get(proxy_api_url,
+                                headers={"Authorization": PROXY_API_KEY},
+                                params={"plan_id": PROXY_PLAN_ID})
+        response = response.json()
 
-        rows = text.split('\n')
-        for row in rows:
-            address, port, username, password = row.split(':')
-            self.proxies.append(f'http://{username}:{password}@{address}:{port}/')
-            self.proxyDicts.append({'username': username, 'password': password, 'address': address, 'port': port})
+        self.proxyDicts = [
+            {
+                'address': proxy.get('proxy_address'),
+                'port': proxy.get('port'),
+                'username': proxy.get('username'),
+                'password': proxy.get('password')
+            }
+            for proxy in response.get('results') if proxy.get('valid')
+        ]
+
+        self.proxies = [
+            f'http://{proxy['username']}:{proxy['password']}@{proxy['address']}:{proxy['port']}/'
+            for proxy in self.proxyDicts
+        ]
 
     def setPoolSize(self, newSize: int):
         self.poolSize = newSize     
