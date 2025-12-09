@@ -11,7 +11,7 @@ DATABASE_CONFIG_PATH = './database/database.ini'
 
 def createGameTable(connection):
     cursor = connection.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS test (
+    cursor.execute("""CREATE TABLE IF NOT EXISTS game (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
                 min_players SMALLINT,
@@ -53,7 +53,7 @@ def updateByBBG(tableName, connection):
         if not match: continue
         game_id = match[0]
 
-        cursor.execute(f"""UPDATE test
+        cursor.execute(f"""UPDATE game
                     SET {tableName}_id = {table_id}
                     WHERE id = {game_id};""")
     connection.commit()
@@ -72,7 +72,7 @@ def updateByFeatures(tableName, connection, rows: list = []):
         table_id = row[0]
         match = chooseOne(tableName, row, connection)
         if match:
-            cursor.execute(f"""UPDATE test
+            cursor.execute(f"""UPDATE game
                         SET {tableName}_id = {table_id}
                         WHERE id = {match[0]};""")
             connection.commit()
@@ -85,7 +85,7 @@ def insertOneRow(tableName: str, columns: list, row: tuple, connection):
     columns = [f"{tableName}_id" if col=='id' else col for col in columns]
     selectedColumns = ','.join(columns)
     values = ','.join('%s' for col in columns)
-    cursor.execute(f"""INSERT INTO test
+    cursor.execute(f"""INSERT INTO game
                    ({selectedColumns})
                    VALUES ({values});""", row)
     connection.commit()
@@ -114,9 +114,9 @@ def getMissingRows(tableName: str, columns: list, connection):
     cursor = connection.cursor()
     cursor.execute(f"""SELECT {selectedColumns} 
                    FROM {tableName} as t
-                   LEFT JOIN test
-                   ON t.id = test.{tableName}_id
-                   WHERE test.{tableName}_id IS NULL
+                   LEFT JOIN game
+                   ON t.id = game.{tableName}_id
+                   WHERE game.{tableName}_id IS NULL
                    ORDER BY t.id""")
     rows = cursor.fetchall()
     cursor.close()
@@ -159,7 +159,7 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
 
         where_clause = " AND ".join(conditions)
         query = f"""
-            SELECT id, title FROM test
+            SELECT id, title FROM game
             WHERE {where_clause}
               AND {tableName}_id IS NULL
             ORDER BY id;
@@ -173,7 +173,7 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
     # If none match found look at all available games
     if match is None:
         query = f"""
-            SELECT id, title FROM test
+            SELECT id, title FROM game
             WHERE {tableName}_id IS NULL
             ORDER BY id;
         """
@@ -188,7 +188,7 @@ def chooseOne(tableName, table_row: tuple, connection, game_choises: list = None
 
 def getGamesWithBBG(tableName, bgg_id, connection):
     cursor = connection.cursor()
-    cursor.execute(f"""SELECT id, title FROM test
+    cursor.execute(f"""SELECT id, title FROM game
                 WHERE bgg_id = {bgg_id}
                 AND {tableName}_id IS NULL
                 ORDER BY id;""")
