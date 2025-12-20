@@ -81,8 +81,10 @@ class Scraper:
         self.logger.startMessage()
         self._updateSession()
         nextPageLink = self.site.startUrl
+        pageNum = 0
 
         while nextPageLink is not None:
+            self.session.headers.update({'referer': nextPageLink})
             try:
                 page = self.session.get(nextPageLink, proxies=self.proxies.proxyForRequests())
             except:
@@ -96,10 +98,10 @@ class Scraper:
             # Saving
             self.writer.writerows(gamesData, tableName)
 
-            pageNum = soup.select_one('span[class*="pager__item is-active"]').text.strip()
+            pageNum += 1
             print(pageNum, self.logger.items_scraped)
 
-            nextPageLink = errorCatcher(lambda _:self.site.baseUrl + soup.select_one(self.site.nextPageSelector).get('href'),
+            nextPageLink = errorCatcher(lambda _: soup.select_one(self.site.nextPageSelector).get('href'),
                                         lambda _: None, None)
             if stopAt is not None:
                 if stopAt <= self.logger.items_scraped: break
@@ -121,7 +123,7 @@ class Scraper:
         with Stealth().use_sync(sync_playwright()) as playwright:
             browser = playwright.chromium.launch(headless=False, proxy=self.proxies.proxyForPlaywright())
             page = browser.new_page()
-            page.goto(self.site.startUrl)
+            page.goto(self.site.baseUrl)
             with page.expect_response(self.site.startUrl, timeout=30000) as response_info:
                     response = response_info.value
             request = response.request
@@ -130,7 +132,23 @@ class Scraper:
         return request.headers
 
     def _updateSession(self):
-        headers = self._getHeaders()
+        #headers = self._getHeaders()
+        headers = {
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'uk,uk-UA;q=0.9,ru;q=0.8,en-US;q=0.7,en;q=0.6',
+            'cache-control': 'max-age=0',
+            'priority': 'u=0, i',
+            'sec-ch-ua': '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'none',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+            'referer': self.site.baseUrl,
+        }
         self.session.headers.update(headers)
 
     def _mergeData(self, detailData: list[dict], shortData: list[dict]) -> list[dict]:
@@ -148,9 +166,9 @@ class Scraper:
 
 if __name__ == '__main__':
     proxy = Proxy(r'https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25')
-    context = Context(7, 4)
-    scr = Scraper(Woodcat, proxy, context)
+    context = Context(7, 5)
+    scr = Scraper(Ihromag, proxy, context)
 
-    data = scr.scrape(tableName='woodcat')
+    data = scr.scrape('ihromag')
 
     print(data)
