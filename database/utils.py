@@ -21,6 +21,8 @@ def getURLs(tableName):
                        ORDER BY id;""")
         
         return tuple(row[0] for row in cursor.fetchall())
+    except:
+        return tuple()
     finally:
         conn.close()
 

@@ -1,6 +1,8 @@
 from scripts.logger import ScrapingLogger
 import re
 import json
+from bs4 import BeautifulSoup
+from scripts.utils import errorCatcher
 
 class HoroshoSite:
     siteName = 'horosho'
@@ -37,7 +39,7 @@ class HoroshoSite:
         
         self._fieldnames = list(self._dataSelectors.keys())
         self.linksSelector = 'div.catalogCard-title a'
-        self.nextPageSelector = 'a[class="pager__item pager__item--forth j-catalog-pagination-btn"]'
+        self.nextPageSelector = 'link[rel="next"]'
 
     @property
     def baseUrl(self):
@@ -119,8 +121,58 @@ class Woodcat(HoroshoSite):
         del self._dataFormaters['bgg_id']
         self._fieldnames = list(self._dataSelectors.keys())
 
+class Ihromag(HoroshoSite):
+    siteName = 'ihromag'
+
+    def __init__(self):
+        super().__init__()
+        self._baseUrl = 'https://desktopgames.com.ua/ua'
+        self.startUrl = 'https://desktopgames.com.ua/ua/catalog/boardgames'
+
+        self._dataSelectors = {
+            'id':       'div.code_goods_',
+            'title':    'div.view h1',
+            'in_stock': 'div.part_block:has(link[itemprop="availability"])',
+            'price':    'meta[property="product:price:amount"]',
+            'players':  'span:has(img[alt="кількість гравців"])',
+            'age':      'span:has(img[alt="вік"])',
+            'maker':    'p:is(span[style="display: inline-block"], :contains("Видавець"), :contains("Видавництво"))',
+            'url':      'link[rel="canonical"]',
+            'bgg_id':   'script[async]:contains("bgg_id")'
+        }
+
+        # Functions to use on selected hmtl-elements
+        self._dataFormaters = {
+            'id':       lambda x: x.text.strip().replace('код: ', ''),
+            'title':    lambda x: x.text.strip().replace('Настільна гра ', '').replace(' (UA)', '').replace('(EN)', '(англ.)'),
+            'in_stock': lambda x: 'в наявності' in x.text.strip().lower(),
+            'price':    lambda x: float(x.get('content')),
+            'players':  lambda x: x.text.strip(),
+            'age':      lambda x: x.text.strip(),
+            'maker':    lambda x: re.findall(r'<b>(?:Видавництво|Видавець):<\/b> ([А-Яа-яІіЇїЄєҐґ\w ]+)\s?(?:\(|<br\/>|<br>)', x.__repr__())[0],
+            'url':      lambda x: x.get('href'),
+            'bgg_id':   lambda x: int(m) if (m := re.findall(r"bgg_id: '(\d+)'", x.text)[0]) != '0' else None
+        }
+        
+        self._fieldnames = list(self._dataSelectors.keys())
+        
+        self.nextPageSelector = 'link[rel="next"]'
+
+    def extractCatalogData(self, html):
+        soup = BeautifulSoup(html, 'html.parser')
+        products = soup.select('li.product')
+        
+        return [{
+            'id':       product.select_one('div.over_goods').get('data-id'),
+            'in_stock': not bool(product.select_one('span.not_sale')),
+            'price':    product.select_one('div.over_goods').get('data-price'),
+            'url':      self.baseUrl + product.select_one('meta[itemprop="url"]').get('content'),
+        } for product in products 
+        if errorCatcher(lambda _: product.select_one('div.short_info span:last-of-type').text != 'Ру',
+                        lambda _: True, None)]
+
 if __name__ == '__main__':
-    instance = Gameland()
+    instance = Ihromag()
     # c = list(instance.dataSelectors.keys()) + ['url']
     # print(c)
     with open('./page.txt', 'r', encoding='utf-8') as f:
