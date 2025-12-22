@@ -4,14 +4,15 @@ from functools import partial
 
 from database.config import config
 from database.utils import fuzzMatching, wordsPersentage
+from database.match import normalizeTitle, indexWords, findMatch, removeGame
 
 
-DATABASE_CONFIG_PATH = './database/database.ini'
+DATABASE_CONFIG_PATH = './database/test.ini'
 
 
 def createGameTable(connection):
     cursor = connection.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS game (
+    cursor.execute("""CREATE TABLE IF NOT EXISTS test (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
                 min_players SMALLINT,
@@ -21,7 +22,8 @@ def createGameTable(connection):
                 bgg_id INT,
                 gameland_id INT,
                 geekach_id INT,
-                woodcat_id INT
+                woodcat_id INT,
+                ihromag_id INT
                 );""")
     connection.commit()
     cursor.close()
@@ -78,22 +80,56 @@ def updateByFeatures(tableName, connection, rows: list = []):
             connection.commit()
     cursor.close()  
 
- 
+def updateByTitles(tableName: str, connection):
+    newGames = {
+        id: normalizeTitle(title)
+        for id, title in getMissingRows(tableName, columns=['id', 'title'], connection=connection)[1]
+    }
 
-def insertOneRow(tableName: str, columns: list, row: tuple, connection):
+    availableGames = {
+        id: normalizeTitle(title)
+        for id, title in getAvailableGames(tableName, connection=connection)
+    }
+
+    word_index = indexWords(availableGames)
+    
+
+    matches = [] # list of game ids like (game_id, table_x_id)
+    for id, title in newGames.items():
+        matchedGame = findMatch(title, availableGames, word_index)
+        if matchedGame:
+            game_id = matchedGame[0]
+            removeGame(game_id, availableGames, word_index)
+            matches.append((game_id, id))
+
+    cursor = connection.cursor()
+    cursor.execute("""CREATE TABLE tmp_matches (
+                   game_id INT PRIMARY KEY,
+                   table_x_id INT NOT NULL);""")
+    cursor.executemany("""INSERT INTO tmp_matches
+                       VALUES (%s, %s)""", matches)
+    
+    cursor.execute(F"""UPDATE test g
+                    SET {tableName}_id = t.table_x_id
+                    FROM tmp_matches t
+                    WHERE g.id = t.game_id;""")
+    cursor.execute("""DROP TABLE tmp_matches;""")
+    connection.commit()
+
+    cursor.close()
+
+
+def insertRows(tableName: str, columns: list, rows: list[tuple], connection):
     cursor = connection.cursor()
     columns = [f"{tableName}_id" if col=='id' else col for col in columns]
     selectedColumns = ','.join(columns)
     values = ','.join('%s' for col in columns)
-    cursor.execute(f"""INSERT INTO game
+    cursor.executemany(f"""INSERT INTO test
                    ({selectedColumns})
-                   VALUES ({values});""", row)
+                   VALUES ({values});""", rows)
     connection.commit()
     cursor.close()
 
-def insertRows(tableName: str, columns: list, rows: list, connection):
-    for row in rows:
-        insertOneRow(tableName, columns, row, connection)
 
 def isColumnExists(tableName: str, column: str, connection) -> bool:
     cursor = connection.cursor()
@@ -114,14 +150,24 @@ def getMissingRows(tableName: str, columns: list, connection):
     cursor = connection.cursor()
     cursor.execute(f"""SELECT {selectedColumns} 
                    FROM {tableName} as t
-                   LEFT JOIN game
-                   ON t.id = game.{tableName}_id
-                   WHERE game.{tableName}_id IS NULL
+                   LEFT JOIN test as g
+                   ON t.id = g.{tableName}_id
+                   WHERE g.{tableName}_id IS NULL
                    ORDER BY t.id""")
     rows = cursor.fetchall()
     cursor.close()
 
     return columns, rows
+
+def getAvailableGames(tableName, connection):
+    cursor = connection.cursor()
+    cursor.execute(f"""SELECT id, title
+                   FROM test
+                   WHERE {tableName}_id IS NULL;""")
+    
+    result = cursor.fetchall()
+    cursor.close()
+    return result
 
 def isequal(columnName, value):
     """Return (SQL condition string, [param]) for safe parameterized query."""
@@ -198,8 +244,8 @@ def getGamesWithBBG(tableName, bgg_id, connection):
 
 def createConnections(tableName, connection):
     createGameTable(connection)
-    updateByBBG(tableName, connection)
-    updateByFeatures(tableName, connection)
+    #updateByBBG(tableName, connection)
+    updateByTitles(tableName, connection)
 
     # If there any rows in tableName left not connected to
     # table game, inserting them
