@@ -2,16 +2,25 @@ import psycopg2
 from sqlalchemy import create_engine, text
 from database.config import config
 import pandas as pd
+import time
 
 from collections.abc import Iterable
 
-DATABASE_CONFIG = config(filename='./database/test.ini')
+DATABASE_CONFIG = config(filename='./database/database.ini')
 
-def getConnection():
+def getConnection(retries=5, delay=5):
     params = DATABASE_CONFIG
-    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}:{params.get('port')}/{params['database']}")
-    conn = engine.connect()
-    return conn
+    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}:{params.get('port')}/{params['database']}", 
+                           connect_args={"connect_timeout": 15})
+    
+    for attempt in range(retries):
+        try:
+            return engine.connect()
+        except Exception as e:
+            if attempt == retries - 1:
+                raise
+            time.sleep(delay)
+    
 
 def removeChar(string: str, char):
     if not isinstance(string, str):
@@ -53,9 +62,9 @@ def getMax(string):
         
 def prepareDataFrame(df: pd.DataFrame):
     df = df.drop_duplicates('url', keep='last')
-    df['min_players'] = df.players.apply(getMin).astype('Int8')
-    df['max_players'] = df.players.apply(getMax).astype('Int8')
-    df['age'] = df.age.apply(getMin).astype('Int8')
+    df['min_players'] = df.players.apply(getMin)
+    df['max_players'] = df.players.apply(getMax)
+    df['age'] = df.age.apply(getMin)
     df['maker'] = df.maker.apply(lambda x: x.lower().replace(' ', '') if isinstance(x, str) else x)
 
     df = df.drop('players', axis='columns')
@@ -123,9 +132,7 @@ def upsertTable(tableName, connection, pathToNewData):
 
 
 if __name__ == "__main__":
-    params = DATABASE_CONFIG
-    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
-    conn = engine.connect()
+    conn = getConnection()
 
     conn.close()
     pass
