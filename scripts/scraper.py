@@ -110,9 +110,11 @@ class Scraper:
             
     
     def _getLinks(self, catalogData: list[dict]):
+        """Return links to detail pages of games 
+        that need to be scraped"""
         # URLs that have missing data in catalog
         links = [product.get('url') for product in catalogData 
-                 if (not product.get('price')) or (product.get('in_stock') is None)]
+                 if not self.site.isCatalogDataValid(product)]
         # URLs of new products
         newLinks = [product.get('url') for product in catalogData 
                     if product.get('url') not in self.existingURLs]
@@ -167,7 +169,7 @@ class Scraper:
 if __name__ == '__main__':
     proxy = Proxy(r'https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25')
     context = Context(7, 5)
-    scr = Scraper(Ihromag, proxy, context)
+    scr = Scraper(Gameland, proxy, context)
 
     data = scr.scrape('ihromag')
 

@@ -69,6 +69,10 @@ class HoroshoSite:
             'url':      product.get('url'),
         } for product in products]
     
+    @staticmethod
+    def isCatalogDataValid(product: dict) -> bool:
+        return product.get('price') and product.get('in_stock') is not None
+    
 class Gameland(HoroshoSite):
     siteName = 'gameland'
 
@@ -164,13 +168,32 @@ class Ihromag(HoroshoSite):
         
         return [{
             'id':       product.select_one('div.over_goods').get('data-id'),
-            'in_stock': not bool(product.select_one('span.not_sale')),
-            'price':    product.select_one('div.over_goods').get('data-price'),
+            'in_stock': not bool(product.select_one('span.not_sale,span.not_available')),
+            'price':    self._getPrice(product),
             'url':      self.baseUrl + product.select_one('meta[itemprop="url"]').get('content'),
         } for product in products 
-        if errorCatcher(lambda _: product.select_one('div.short_info span:last-of-type').text != 'Ру',
+        if errorCatcher(lambda _: product.select_one('div.short_info span:last-of-type').text != 'Ру' and "(RU)" not in product.select_one('span.title').text,
                         lambda _: True, None)]
 
+    @staticmethod
+    def isCatalogDataValid(product: dict) -> bool:
+        return True
+    
+    def _getPrice(self, soup: BeautifulSoup):
+        discount = 0
+        fullPrice = soup.select_one('div.over_goods').get('data-price')
+        if fullPrice is None:
+            return None
+        fullPrice = int(fullPrice)
+        text = soup.select_one('div.price').text
+        if '%' in text:
+            try:
+                discount = int(re.findall(r'(\d+)%', text)[0])
+            except:
+                pass
+        
+        return  round(fullPrice * (1 - discount/100))
+    
 if __name__ == '__main__':
     instance = Ihromag()
     # c = list(instance.dataSelectors.keys()) + ['url']
