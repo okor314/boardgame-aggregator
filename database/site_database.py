@@ -5,7 +5,7 @@ import pandas as pd
 
 from collections.abc import Iterable
 
-DATABASE_CONFIG = config(filename='./database/database.ini')
+DATABASE_CONFIG = config(filename='./database/test.ini')
 
 def getConnection():
     params = DATABASE_CONFIG
@@ -116,6 +116,9 @@ def upsertTable(tableName, connection, pathToNewData):
                        lastchecked = current_date;""")
     connection.execute(query)
     connection.execute(text(f'DROP TABLE trans_{tableName};'))
+
+    connection.execute(text(f"""DELETE FROM {tableName}
+                            WHERE title is NULL;"""))
     connection.commit()
 
 
@@ -123,7 +126,6 @@ if __name__ == "__main__":
     params = DATABASE_CONFIG
     engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}/{params['database']}")
     conn = engine.connect()
-    
-    upsertTable('woodcat', conn, './data/woodcat.csv')
+
     conn.close()
     pass
