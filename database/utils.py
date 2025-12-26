@@ -1,3 +1,4 @@
+import time
 import psycopg2
 import re
 from thefuzz import fuzz
@@ -6,12 +7,20 @@ from database.config import config
 from database.site_database import removeChar
 
 
-DATABASE_CONFIG = config(filename='./database/database.ini')
+DATABASE_CONFIG = config(filename='./database/test.ini')
 FUZZ_BARRIER = 60
 
-def get_db():
-    connection = psycopg2.connect(**DATABASE_CONFIG)
-    return connection
+def get_db(retries=5, delay=5):
+    for attempt in range(retries):
+        try:
+            return psycopg2.connect(
+                **DATABASE_CONFIG,
+                connect_timeout=15
+            )
+        except Exception as e:
+            if attempt == retries - 1:
+                raise
+            time.sleep(delay)
 
 def getURLs(tableName):
     try:
