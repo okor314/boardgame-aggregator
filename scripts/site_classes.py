@@ -125,6 +125,26 @@ class Woodcat(HoroshoSite):
         del self._dataFormaters['bgg_id']
         self._fieldnames = list(self._dataSelectors.keys())
 
+class LordOfBoards(HoroshoSite):
+    siteName = 'lordofboards'
+
+    def __init__(self):
+        super().__init__()
+        self._baseUrl = 'https://lordofboards.com.ua'
+        self.startUrl = 'https://lordofboards.com.ua/nastolnye-igry/'
+
+        self._dataSelectors.update(
+            {
+                'maker':    'tr.product-features__row:has(th:contains("Бренд")) td',
+                'bgg_id':  'tr.product-features__row:has(th:contains("BoardGameGeek")) td a'
+            }
+        )
+        self._dataFormaters.update(
+            {
+                'age': lambda x: x.text.strip().replace(' років і більше', ''),
+            }
+        )
+
 class Ihromag(HoroshoSite):
     siteName = 'ihromag'
 
@@ -182,7 +202,7 @@ class Ihromag(HoroshoSite):
     def _getPrice(self, soup: BeautifulSoup):
         discount = 0
         fullPrice = soup.select_one('div.over_goods').get('data-price')
-        if fullPrice is None:
+        if not fullPrice:
             return None
         fullPrice = int(fullPrice)
         text = soup.select_one('div.price').text
