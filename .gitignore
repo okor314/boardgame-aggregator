@@ -2,4 +2,4 @@ __pycache__
 *.ini
 scraping.log
 data/
-.env
+*.env
