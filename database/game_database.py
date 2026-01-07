@@ -7,12 +7,12 @@ from database.utils import fuzzMatching, wordsPersentage
 from database.match import normalizeTitle, indexWords, findMatch, removeGame
 
 
-DATABASE_CONFIG_PATH = './database/test.ini'
+DATABASE_CONFIG_PATH = './.env'
 
 
 def createGameTable(connection):
     cursor = connection.cursor()
-    cursor.execute("""CREATE TABLE IF NOT EXISTS test (
+    cursor.execute("""CREATE TABLE IF NOT EXISTS game (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
                 min_players SMALLINT,
@@ -109,7 +109,7 @@ def updateByTitles(tableName: str, connection):
     cursor.executemany("""INSERT INTO tmp_matches
                        VALUES (%s, %s)""", matches)
     
-    cursor.execute(F"""UPDATE test g
+    cursor.execute(F"""UPDATE game g
                     SET {tableName}_id = t.table_x_id
                     FROM tmp_matches t
                     WHERE g.id = t.game_id;""")
@@ -124,7 +124,7 @@ def insertRows(tableName: str, columns: list, rows: list[tuple], connection):
     columns = [f"{tableName}_id" if col=='id' else col for col in columns]
     selectedColumns = ','.join(columns)
     values = ','.join('%s' for col in columns)
-    cursor.executemany(f"""INSERT INTO test
+    cursor.executemany(f"""INSERT INTO game
                    ({selectedColumns})
                    VALUES ({values});""", rows)
     connection.commit()
@@ -150,7 +150,7 @@ def getMissingRows(tableName: str, columns: list, connection):
     cursor = connection.cursor()
     cursor.execute(f"""SELECT {selectedColumns} 
                    FROM {tableName} as t
-                   LEFT JOIN test as g
+                   LEFT JOIN game as g
                    ON t.id = g.{tableName}_id
                    WHERE g.{tableName}_id IS NULL
                    ORDER BY t.id""")
@@ -162,7 +162,7 @@ def getMissingRows(tableName: str, columns: list, connection):
 def getAvailableGames(tableName, connection):
     cursor = connection.cursor()
     cursor.execute(f"""SELECT id, title
-                   FROM test
+                   FROM game
                    WHERE {tableName}_id IS NULL;""")
     
     result = cursor.fetchall()
