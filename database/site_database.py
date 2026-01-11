@@ -50,6 +50,7 @@ def _createTable(name, connection, pathToCSV):
     conn.commit()
     cur.execute(f"""CREATE TABLE IF NOT EXISTS {name} (
                 id          SERIAL PRIMARY KEY,
+                game_id     INT,
                 {name}_id   TEXT,
                 title       TEXT,
                 in_stock    BOOLEAN,
@@ -93,6 +94,6 @@ def upsertTable(tableName, connection, pathToNewData):
 
 if __name__ == "__main__":
     conn = getConnection()
-    
+
     conn.close()
     pass

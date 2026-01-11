@@ -7,7 +7,7 @@ from database.utils import fuzzMatching, wordsPersentage
 from database.match import normalizeTitle, indexWords, findMatch, removeGame
 
 
-DATABASE_CONFIG_PATH = './.env'
+DATABASE_CONFIG = config()
 
 
 def createGameTable(connection):
@@ -23,7 +23,8 @@ def createGameTable(connection):
                 gameland_id INT,
                 geekach_id INT,
                 woodcat_id INT,
-                ihromag_id INT
+                ihromag_id INT,
+                lordofboards_id INT
                 );""")
     connection.commit()
     cursor.close()
@@ -254,6 +255,14 @@ def createConnections(tableName, connection):
                                  connection)
     insertRows(tableName, columns, missingRows, connection)
 
+    cursor = connection.cursor()
+    cursor.execute(f"""UPDATE {tableName} tb
+                    SET game_id = g.id
+                    FROM game g
+                    WHERE tb.id = g.{tableName}_id;""")
+    connection.commit()
+    cursor.close()
+
 def updateGameTable(connection):
     cursor = connection.cursor()
     cursor.execute("""SELECT name FROM site
@@ -265,8 +274,7 @@ def updateGameTable(connection):
         createConnections(name, connection)
 
 if __name__ == "__main__":
-    params = config(DATABASE_CONFIG_PATH)
-    conn = psycopg2.connect(**params)
+    conn = psycopg2.connect(**DATABASE_CONFIG)
     import time
     start = time.time()
     updateGameTable(conn)
