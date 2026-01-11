@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from collections import defaultdict
 from typing import List, Dict, Set
 
-from database.utils import extract_english_fragments, extract_ukrainian_fragments
-from database.site_database import removeChar
+from database.utils import extract_english_fragments, extract_ukrainian_fragments, removeChar
 from database.utils import compareTitles, wordsPersentage
 
 FUZZ_BARRIER = 60

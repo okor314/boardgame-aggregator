@@ -2,12 +2,13 @@ import time
 import psycopg2
 import re
 from thefuzz import fuzz
+from pandas import NA
+from collections.abc import Iterable
 
 from database.config import config
-from database.site_database import removeChar
 
 
-DATABASE_CONFIG = config(filename='./database/test.ini')
+DATABASE_CONFIG = config()
 FUZZ_BARRIER = 60
 
 def get_db(retries=5, delay=5):
@@ -90,6 +91,45 @@ def wordsPersentage(title_1, title_2):
     total = len(words_1) + len(words_2)
 
     return intersection / total * 100
+
+def removeChar(string: str, char):
+    if not isinstance(string, str):
+        return string
+    elif isinstance(char, str):
+        return string.replace(char, '')
+    elif isinstance(char, Iterable):
+        for c in char:
+            string = string.replace(c, '')
+        return string
+    
+def replaceChar(string: str, translator: dict):
+    if not isinstance(string, str):
+        return string
+    else:
+        for old, new in translator.items():
+            string = string.replace(old, new)
+        return string
+    
+def getMin(string):
+    if not isinstance(string, str):
+        return string
+    else:
+        string = removeChar(string, ['+', ' '])
+        string = replaceChar(string, {',':'-', ';':'-', '–':'-'})
+        return int(string.split('-')[0])
+        
+
+def getMax(string):
+    if not isinstance(string, str):
+        return string
+    else:
+        string = removeChar(string, ['+', ' '])
+        string = replaceChar(string, {',':'-', ';':'-', '–':'-'})
+        try:
+            return int(string.split('-')[1])
+        except:
+            return NA
+
 
 if __name__ == '__main__':
     urls = getURLs('gameland')

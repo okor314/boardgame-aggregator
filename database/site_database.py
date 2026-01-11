@@ -1,16 +1,15 @@
-import psycopg2
 from sqlalchemy import create_engine, text
 from database.config import config
+from database import utils
 import pandas as pd
 import time
 
-from collections.abc import Iterable
 
-DATABASE_CONFIG = config(filename='./database/database.ini')
+
+DATABASE_URL = config(return_url=True)
 
 def getConnection(retries=5, delay=5):
-    params = DATABASE_CONFIG
-    engine = create_engine(f"postgresql+psycopg2://{params['user']}:{params['password']}@{params['host']}:{params.get('port')}/{params['database']}", 
+    engine = create_engine(DATABASE_URL, 
                            connect_args={"connect_timeout": 15})
     
     for attempt in range(retries):
@@ -21,50 +20,11 @@ def getConnection(retries=5, delay=5):
                 raise
             time.sleep(delay)
     
-
-def removeChar(string: str, char):
-    if not isinstance(string, str):
-        return string
-    elif isinstance(char, str):
-        return string.replace(char, '')
-    elif isinstance(char, Iterable):
-        for c in char:
-            string = string.replace(c, '')
-        return string
-    
-def replaceChar(string: str, translator: dict):
-    if not isinstance(string, str):
-        return string
-    else:
-        for old, new in translator.items():
-            string = string.replace(old, new)
-        return string
-    
-def getMin(string):
-    if not isinstance(string, str):
-        return string
-    else:
-        string = removeChar(string, ['+', ' '])
-        string = replaceChar(string, {',':'-', ';':'-', '–':'-'})
-        return int(string.split('-')[0])
-        
-
-def getMax(string):
-    if not isinstance(string, str):
-        return string
-    else:
-        string = removeChar(string, ['+', ' '])
-        string = replaceChar(string, {',':'-', ';':'-', '–':'-'})
-        try:
-            return int(string.split('-')[1])
-        except:
-            return pd.NA
-        
 def prepareDataFrame(df: pd.DataFrame):
     df = df.drop_duplicates('url', keep='last')
-    df['min_players'] = df.players.apply(getMin)
-    df['max_players'] = df.players.apply(getMax)
-    df['age'] = df.age.apply(getMin)
+    df['min_players'] = df.players.apply(utils.getMin)
+    df['max_players'] = df.players.apply(utils.getMax)
+    df['age'] = df.age.apply(utils.getMin)
     df['maker'] = df.maker.apply(lambda x: x.lower().replace(' ', '') if isinstance(x, str) else x)
 
     df = df.drop('players', axis='columns')
@@ -84,7 +44,7 @@ def _createTable(name, connection, pathToCSV):
     # Definition of bbg column in SQL if it's present in dataframe
     bgg_column = 'bgg_id INTEGER,' if 'bgg_id' in df.columns else ''
 
-    conn = psycopg2.connect(**DATABASE_CONFIG)
+    conn = utils.get_db()
     cur = conn.cursor()
     cur.execute(f'DROP TABLE IF EXISTS {name}')
     conn.commit()
@@ -133,6 +93,6 @@ def upsertTable(tableName, connection, pathToNewData):
 
 if __name__ == "__main__":
     conn = getConnection()
-
+    
     conn.close()
     pass
