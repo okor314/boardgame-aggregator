@@ -22,10 +22,11 @@ def getUsersSubscribedOn(game_id_list: list):
     try:
         connection = get_db()
         cursor = connection.cursor(cursor_factory = RealDictCursor)
+        game_ids = ','.join(['%s' for _ in game_id_list])
         cursor.execute(f"""SELECT u.telegram_user_id, sub.game_id
                         FROM subscription sub
                         JOIN bot_user u ON sub.user_id = u.id
-                        WHERE game_id IN {tuple(game_id_list)};""")
+                        WHERE game_id IN ({game_ids});""", game_id_list)
         
         subs = cursor.fetchall()
         # Sorting subscriptions by telegram_user_id
@@ -33,9 +34,10 @@ def getUsersSubscribedOn(game_id_list: list):
         for sub in subs:
             subs_by_user[sub['telegram_user_id']].add(sub['game_id'])
 
-        print(subs_by_user)
+        return subs_by_user
 
     except Exception as e:
+        print(e)
         return {}
     finally:
         connection.close()
@@ -176,4 +178,4 @@ def delTemporaryTables(connection):
 
 
 if __name__ == '__main__':
-    getUsersSubscribedOn([])
+    print(getUsersSubscribedOn([1,2,3]))
