@@ -68,29 +68,38 @@ def _createTable(name, connection, pathToCSV):
     cur.close()
     conn.close()
 
-def upsertTable(tableName, connection, pathToNewData):
-    transdf = pd.read_csv(pathToNewData)
-    transdf = prepareDataFrame(transdf)
-    transdf.to_sql(f'trans_{tableName}', connection, if_exists='replace', index=False)
+def upsertTable(tableName, pathToNewData):
+    connection = None
+    try:
+        connection = getConnection()
+        transdf = pd.read_csv(pathToNewData)
+        transdf = prepareDataFrame(transdf)
+        transdf.to_sql(f'trans_{tableName}', connection, if_exists='replace', index=False)
 
-    columns = [f'{tableName}_id' if col=='id' else col for col in transdf.columns]
-    selectedColumns = ','.join(columns)
-    transColumns = ','.join(transdf.columns)
+        columns = [f'{tableName}_id' if col=='id' else col for col in transdf.columns]
+        selectedColumns = ','.join(columns)
+        transColumns = ','.join(transdf.columns)
 
-    query = text(f"""INSERT INTO {tableName} ({selectedColumns})
-                       SELECT {transColumns} FROM trans_{tableName}
-                       ON CONFLICT(url)
-                       DO UPDATE SET
-                       in_stock = excluded.in_stock,
-                       price = excluded.price,
-                       lastchecked = current_date;""")
-    connection.execute(query)
-    connection.execute(text(f'DROP TABLE trans_{tableName};'))
+        query = text(f"""INSERT INTO {tableName} ({selectedColumns})
+                        SELECT {transColumns} FROM trans_{tableName}
+                        ON CONFLICT(url)
+                        DO UPDATE SET
+                        in_stock = excluded.in_stock,
+                        price = excluded.price,
+                        lastchecked = current_date;""")
+        connection.execute(query)
+        connection.execute(text(f'DROP TABLE trans_{tableName};'))
 
-    connection.execute(text(f"""DELETE FROM {tableName}
-                            WHERE title is NULL;"""))
-    connection.commit()
-
+        connection.execute(text(f"""DELETE FROM {tableName}
+                                WHERE title is NULL;"""))
+        connection.commit()
+    except Exception as e:
+        if connection:
+            connection.rollback()
+        raise e
+    finally:
+        if connection:
+            connection.close()
 
 if __name__ == "__main__":
     conn = getConnection()

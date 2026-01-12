@@ -1,13 +1,9 @@
-import psycopg2
-from thefuzz import fuzz, process
 from functools import partial
 
 from database.config import config
-from database.utils import fuzzMatching, wordsPersentage
+from database.utils import fuzzMatching, wordsPersentage, get_db
 from database.match import normalizeTitle, indexWords, findMatch, removeGame
 
-
-DATABASE_CONFIG = config()
 
 
 def createGameTable(connection):
@@ -263,23 +259,31 @@ def createConnections(tableName, connection):
     connection.commit()
     cursor.close()
 
-def updateGameTable(connection):
-    cursor = connection.cursor()
-    cursor.execute("""SELECT name FROM site
-                   ORDER BY id;""")
-    names = [row[0] for row in cursor.fetchall()]
-    cursor.close()
+def updateGameTable():
+    connection = None
+    try:
+        connection = get_db()
+        cursor = connection.cursor()
+        cursor.execute("""SELECT name FROM site
+                    ORDER BY id;""")
+        names = [row[0] for row in cursor.fetchall()]
+        cursor.close()
 
-    for name in names:
-        createConnections(name, connection)
+        for name in names:
+            createConnections(name, connection)
+    except Exception as e:
+        if connection:
+            connection.rollback()
+        raise e
+    finally:
+        if connection:
+            connection.close()
 
 if __name__ == "__main__":
-    conn = psycopg2.connect(**DATABASE_CONFIG)
     import time
     start = time.time()
-    updateGameTable(conn)
+    updateGameTable()
     end = time.time()
     print(end - start)
-    conn.close()
     pass
 
