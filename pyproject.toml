@@ -1,0 +1,15 @@
+[project]
+name = "boardgame-aggregator"
+version = "0.1.0"
+description = "Board game price aggregator"
+requires-python = ">=3.11"
+
+dependencies = [
+    "psycopg2-binary>=2.9",
+    "SQLAlchemy>=2.0",
+    "requests",
+    "beautifulsoup4",
+    "python-dotenv>=1.0.1",
+    "thefuzz",
+    "pandas>=2.3"
+]
