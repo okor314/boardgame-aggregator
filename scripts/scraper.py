@@ -1,5 +1,5 @@
-from playwright.sync_api import sync_playwright, Playwright
-from playwright_stealth import Stealth
+# from playwright.sync_api import sync_playwright, Playwright
+# from playwright_stealth import Stealth
 
 import requests
 from bs4 import BeautifulSoup
@@ -77,11 +77,13 @@ class Scraper:
 
         return gamesData
     
-    def scrape(self, tableName: str, stopAt: int=None):
+    def scrape(self, tableName: str = None, stopAt: int=None):
         self.logger.startMessage()
         self._updateSession()
         nextPageLink = self.site.startUrl
         pageNum = 0
+        if not tableName:
+            tableName = self.site.siteName
 
         while nextPageLink is not None:
             self.session.headers.update({'referer': nextPageLink})
@@ -108,6 +110,19 @@ class Scraper:
         self.logger.summarize()
         return self.failedURLs
             
+    def scrapeLinks(self, links: list[str]):
+        """Method of scraping specified links to details pages of games.
+        Save data scraped from each page individualy."""
+        self.logger.startMessage()
+        self._updateSession()
+
+        def scrape_and_save(url: str):
+            data = self.scrapeDetailPage(url)
+            self.writer.writerows([data], table_name=self.site.siteName)
+
+        with ThreadPoolExecutor(max_workers=self.context.workers) as executor:
+            result = list(executor.map(scrape_and_save, links))
+
     
     def _getLinks(self, catalogData: list[dict]):
         """Return links to detail pages of games 
@@ -121,17 +136,17 @@ class Scraper:
         links.extend(newLinks)
         return set(links)
 
-    def _getHeaders(self):
-        with Stealth().use_sync(sync_playwright()) as playwright:
-            browser = playwright.chromium.launch(headless=False, proxy=self.proxies.proxyForPlaywright())
-            page = browser.new_page()
-            page.goto(self.site.baseUrl)
-            with page.expect_response(self.site.startUrl, timeout=30000) as response_info:
-                    response = response_info.value
-            request = response.request
-            browser.close()
+    # def _getHeaders(self):
+    #     with Stealth().use_sync(sync_playwright()) as playwright:
+    #         browser = playwright.chromium.launch(headless=False, proxy=self.proxies.proxyForPlaywright())
+    #         page = browser.new_page()
+    #         page.goto(self.site.baseUrl)
+    #         with page.expect_response(self.site.startUrl, timeout=30000) as response_info:
+    #                 response = response_info.value
+    #         request = response.request
+    #         browser.close()
 
-        return request.headers
+    #     return request.headers
 
     def _updateSession(self):
         #headers = self._getHeaders()
