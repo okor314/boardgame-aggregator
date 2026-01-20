@@ -141,7 +141,8 @@ class LordOfBoards(HoroshoSite):
         )
         self._dataFormaters.update(
             {
-                'age': lambda x: x.text.strip().replace(' років і більше', ''),
+                'age': lambda x: x.text.replace(' років і більше', '').replace(' роки', '').strip(),
+                'players': lambda x: x.text.replace(' і більше', '').strip(),
             }
         )
 

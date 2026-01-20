@@ -11,7 +11,7 @@ def createHistoryTable(connection):
     connection.commit()
     cursor.close()
 
-def updateHistoryTable(connection):
+def updateHistoryTable():
     connection = None
     try:
         connection = get_db()

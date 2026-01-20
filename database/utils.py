@@ -24,6 +24,7 @@ def get_db(retries=5, delay=5):
             time.sleep(delay)
 
 def getURLs(tableName):
+    conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -34,7 +35,8 @@ def getURLs(tableName):
     except:
         return tuple()
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 def fuzzMatching(string, choises, minScore = FUZZ_BARRIER, scorer = fuzz.WRatio):
     """choises is lists of tuples (id, str)"""
