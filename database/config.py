@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
 
-load_dotenv(dotenv_path='test.env')
+load_dotenv(dotenv_path='.env')
 
 def config(return_url=False):
     db = {

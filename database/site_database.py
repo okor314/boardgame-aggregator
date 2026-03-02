@@ -17,7 +17,7 @@ def getConnection(retries=5, delay=5):
             return engine.connect()
         except Exception as e:
             if attempt == retries - 1:
-                raise
+                raise e
             time.sleep(delay)
     
 def prepareDataFrame(df: pd.DataFrame):
@@ -105,4 +105,5 @@ if __name__ == "__main__":
     conn = getConnection()
 
     conn.close()
+    upsertTable('geekach', './data/geekach.csv')
     pass

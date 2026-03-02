@@ -13,6 +13,7 @@ from database.game_database import updateGameTable
 from database.site_database import upsertTable
 from database.history_database import updateHistoryTable
 from database.subscriptions import getURLsToScrape
+from database.utils import getSitesToScrape, updateScrapingDate
  
 from datetime import date
 import logging
@@ -21,8 +22,8 @@ import logging
 PROXY_URL = r'https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25'
 
 SITES = [Gameland, Geekach, Woodcat, Ihromag, LordOfBoards]
+SITES_DICT = {site.siteName: site for site in SITES}
 
-FULL_SCRAPE_DAY = 5             # Saturday
 SUBSCRIPTIONS_SCRAPE_DAY = 1    # Tuesday
 
 logger = logging.getLogger(__name__)
@@ -32,13 +33,14 @@ def run_site(site, proxy, context, today):
     table_name = site.siteName
 
     try:
-        if today == FULL_SCRAPE_DAY:
-            scraper.scrape()
-        elif today == SUBSCRIPTIONS_SCRAPE_DAY:
+        if today == SUBSCRIPTIONS_SCRAPE_DAY:
             links = getURLsToScrape(table_name)
             scraper.scrapeLinks(links)
+        else:
+            scraper.scrape()
 
         upsertTable(table_name, f"./data/{table_name}.csv")
+        updateScrapingDate(site.siteName)
 
     except Exception:
         logger.exception("Failed processing site %s", table_name)
@@ -49,7 +51,10 @@ def main():
     context = Context(workers=7, sleep_break=4)
     today = date.today().weekday()
 
-    for site in SITES:
+    sites_to_scrape = (SITES if today == SUBSCRIPTIONS_SCRAPE_DAY 
+                       else [SITES_DICT[site_name] for site_name in getSitesToScrape()])
+
+    for site in sites_to_scrape:
         run_site(site, proxy, context, today)
 
     updateGameTable()

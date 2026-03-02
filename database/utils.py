@@ -38,6 +38,24 @@ def getURLs(tableName):
         if conn:
             conn.close()
 
+def getSitesToScrape(limit=1) -> list[str]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""SELECT name FROM site
+                        ORDER BY last_scraped_at NULLS FIRST
+                        LIMIT %s;""", (limit,))
+        sites = [site[0] for site in cursor.fetchall()]
+    
+    return sites
+
+def updateScrapingDate(site_name: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""UPDATE site
+                       SET last_scraped_at = CURRENT_DATE
+                       WHERE name = %s;""", (site_name,))
+        conn.commit()
+
 def fuzzMatching(string, choises, minScore = FUZZ_BARRIER, scorer = fuzz.WRatio):
     """choises is lists of tuples (id, str)"""
     scores = ((id, choise, compareTitles(string, choise, scorer)) for id, choise in choises)
@@ -134,6 +152,10 @@ def getMax(string):
 
 
 if __name__ == '__main__':
-    urls = getURLs('gameland')
-    print(urls)
-    print(len(urls))
+    # urls = getURLs('gameland')
+    # print(urls)
+    # print(len(urls))
+    print(getSitesToScrape())
+    print(getSitesToScrape(3))
+    updateScrapingDate('gameland')
+    print(getSitesToScrape())
