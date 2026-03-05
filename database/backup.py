@@ -36,3 +36,4 @@ try:
     print("Backup created and uploaded.")
 except Exception as e:
     print(f'[backup failure]: {e}')
+    raise e

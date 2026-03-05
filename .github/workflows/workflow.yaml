@@ -2,48 +2,52 @@ name: data-colector
 
 on:
   schedule:
-    - cron: '5 22 * * *'
+    - cron: '5 20 * * *'
   workflow_dispatch:
 
 jobs:
   run:
-   runs-on: ubuntu-latest
-   env:
-    PROXY_API_KEY: ${{ secrets.PROXY_API_KEY }}
-    PROXY_PLAN_ID: ${{ secrets.PROXY_PLAN_ID }}
-    DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
-    DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
-    DATABASE_DATABASE: ${{ secrets.DATABASE_DATABASE }}
-    DATABASE_USER: ${{ secrets.DATABASE_USER }}
-    DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-    BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+    runs-on: ubuntu-latest
+    env:
+      PROXY_API_KEY: ${{ secrets.PROXY_API_KEY }}
+      PROXY_PLAN_ID: ${{ secrets.PROXY_PLAN_ID }}
+      DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+      DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+      DATABASE_DATABASE: ${{ secrets.DATABASE_DATABASE }}
+      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
 
-   steps:
-   - uses: actions/checkout@v4
+    steps:
+    - uses: actions/checkout@v4
 
-   - uses: actions/setup-python@v5
-     with:
-       python-version: "3.11"
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+  
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget gnupg
+        wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client-17 rclone
+  
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
  
-   - name: Install system dependencies
-     run: |
-       sudo apt-get update
-       sudo apt-get install -y postgresql-client rclone
+    - name: Configure rclone
+      run: |
+       mkdir -p ~/.config/rclone
+       echo "[gdrive]" > ~/.config/rclone/rclone.conf
+       echo "type = drive" >> ~/.config/rclone/rclone.conf
+       echo "scope = drive" >> ~/.config/rclone/rclone.conf
+       echo 'token = ${{ secrets.GDRIVE_TOKEN }}' >> ~/.config/rclone/rclone.conf
  
-   - name: Install Python dependencies
-     run: pip install -r requirements.txt
+    - name: Run backup
+      run: python3 -m database.backup
 
-   - name: Configure rclone
-     run: |
-      mkdir -p ~/.config/rclone
-      echo "[gdrive]" > ~/.config/rclone/rclone.conf
-      echo "type = drive" >> ~/.config/rclone/rclone.conf
-      echo "scope = drive" >> ~/.config/rclone/rclone.conf
-      echo 'token = ${{ secrets.GDRIVE_TOKEN }}' >> ~/.config/rclone/rclone.conf
-
-   - name: Run backup
-     run: python3 -m database.backup
-
-   - name: Run scraper
-     run: python3 -m main
+    - name: Run scraper
+      run: python3 -m main
  
