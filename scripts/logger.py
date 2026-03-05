@@ -26,10 +26,10 @@ class ScrapingLogger:
         self.logger.info('Scraping started')
 
     def failedURL(self, url, exc_info=False, status_code=None):
-        self.logger.error(f'{str(status_code)+' ' if status_code else ''}Failed url: {url}', exc_info=exc_info)
+        self.logger.error(f"{str(status_code)+' ' if status_code else ''}Failed url: {url}", exc_info=exc_info)
 
     def failedPagination(self, url, exc_info=False, status_code=None):
-        self.logger.critical(f'{str(status_code)+' ' if status_code else ''}Pagination failed at url: {url}', exc_info=exc_info)
+        self.logger.critical(f"{str(status_code)+' ' if status_code else ''}Pagination failed at url: {url}", exc_info=exc_info)
 
     def increaseItemsScraped(self, n):
         self.items_scraped += n

@@ -13,6 +13,6 @@ def config(return_url=False):
     }
 
     if return_url:
-        db = f'postgresql://{db['user']}:{db['password']}@{db["host"]}:{db["port"]}/{db["database"]}'
+        db = f'postgresql://{db["user"]}:{db["password"]}@{db["host"]}:{db["port"]}/{db["database"]}'
 
     return db

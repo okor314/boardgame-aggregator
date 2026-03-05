@@ -15,9 +15,9 @@ def textFromGameDetails(game_details: dict) -> str:
     savings = game_details['old_price'] - game_details['new_price']
     discount = round(savings / game_details['old_price']* 100) 
 
-    return (f'<a href="{game_details['url']}">{game_details['title']}</a>\n'\
-            f'Ціна: <u>{game_details['new_price']}  грн.</u> (<s>{game_details['old_price']} грн.</s>)\n'\
-            f'Заощадження: {savings} грн. ({discount}%)')
+    return (f"<a href=\"{game_details['url']}\">{game_details['title']}</a>\n"\
+            f"Ціна: <u>{game_details['new_price']}  грн.</u> (<s>{game_details['old_price']} грн.</s>)\n"\
+            f"Заощадження: {savings} грн. ({discount}%)")
 
 def textForUser(game_ids: Iterable[int], game_text_mapping: dict[int, str]):
     message_parts = ['Зменшилася ціна на ігри, за якими ви стежите:']

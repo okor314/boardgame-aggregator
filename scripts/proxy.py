@@ -37,7 +37,7 @@ class Proxy:
         ]
 
         self.proxies = [
-            f'http://{proxy['username']}:{proxy['password']}@{proxy['address']}:{proxy['port']}/'
+            f"http://{proxy['username']}:{proxy['password']}@{proxy['address']}:{proxy['port']}/"
             for proxy in self.proxyDicts
         ]
 
@@ -74,7 +74,7 @@ class Proxy:
             poolSize = len(self.proxies)
 
         proxy = random.choice(self.proxyDicts[:poolSize])
-        server = f'http://{proxy['address']}:{proxy['port']}'
+        server = f"http://{proxy['address']}:{proxy['port']}"
         username = proxy['username']
         password = proxy['password']
         return {'server': server, 'username': username, 'password': password}
