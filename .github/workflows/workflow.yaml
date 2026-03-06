@@ -48,6 +48,6 @@ jobs:
     - name: Run backup
       run: python3 -m database.backup
 
-    #- name: Run scraper
-    #  run: python3 -m main
+    - name: Run scraper
+      run: python3 -m main
  
