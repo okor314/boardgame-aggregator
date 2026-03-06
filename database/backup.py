@@ -15,7 +15,7 @@ try:
 
     subprocess.run(
         [
-            "pg_dump",
+            "/usr/lib/postgresql/17/bin/pg_dump",
             "-F", "c",
             DATABASE_URL,
             "-f", backup_path,
