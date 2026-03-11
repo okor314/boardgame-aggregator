@@ -191,7 +191,7 @@ class Ihromag(HoroshoSite):
             'id':       product.select_one('div.over_goods').get('data-id'),
             'in_stock': not bool(product.select_one('span.not_sale,span.not_available')),
             'price':    self._getPrice(product),
-            'url':      self.baseUrl + product.select_one('meta[itemprop="url"]').get('content'),
+            'url':      self.baseUrl + product.select_one('a').get('href'),
         } for product in products 
         if errorCatcher(lambda _: product.select_one('div.short_info span:last-of-type').text != 'Ру' and "(RU)" not in product.select_one('span.title').text,
                         lambda _: True, None)]
