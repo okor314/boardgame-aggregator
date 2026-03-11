@@ -19,6 +19,8 @@ def getURLsToScrape(tableName):
         connection.close()
 
 def getUsersSubscribedOn(game_id_list: list):
+    if not game_id_list:
+        return {}
     try:
         connection = get_db()
         cursor = connection.cursor(cursor_factory = RealDictCursor)
